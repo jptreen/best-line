@@ -263,7 +263,7 @@
     <div class="hud">
       <div class="tile"><div class="big" id="roundNum">1 of 12</div><div class="lab">Round</div></div>
       <div class="tile"><div class="big good" id="scoreNum">0</div><div class="lab">Score</div></div>
-      <div class="tile"><div class="big" id="boardNum">4×4</div><div class="lab">Board</div></div>
+      <div class="tile"><div class="big" id="roundSecs">0s</div><div class="lab">Time</div></div>
       <div class="tile"><div class="big" id="roundPts">20</div><div class="lab">This round</div></div>
     </div>
     <div class="pips" id="pips"></div>
@@ -361,17 +361,20 @@
   // answerable and stops the moment you pick.
   let roundStartMs = null, tickHandle = null;
 
-  function showRoundPts() {
+  // Both tiles are driven off the same elapsed reading, so the clock and the
+  // points can never disagree about which second you are in.
+  function showRoundClock() {
+    const ms = roundStartMs === null ? 0 : Date.now() - roundStartMs;
+    document.getElementById('roundSecs').textContent = Math.floor(ms / 1000) + 's';
     const el = document.getElementById('roundPts');
-    el.textContent = roundStartMs === null
-      ? PERFECT : scoreRound(Date.now() - roundStartMs);
+    el.textContent = roundStartMs === null ? PERFECT : scoreRound(ms);
     el.classList.remove('bad');
   }
   function startRoundClock() {
     stopRoundClock();
     roundStartMs = Date.now();
-    showRoundPts();
-    tickHandle = setInterval(showRoundPts, 250);
+    showRoundClock();
+    tickHandle = setInterval(showRoundClock, 250);
   }
   function stopRoundClock() {
     clearInterval(tickHandle);
@@ -636,6 +639,7 @@
     ptsEl.textContent = points;
     ptsEl.classList.toggle('bad', points === 0);
     const took = (tookMs / 1000).toFixed(1) + 's';
+    document.getElementById('roundSecs').textContent = took;
 
     const bestKeys = scored.filter(s => s.p >= best - 1e-12).map(s => s.line.key);
 
@@ -702,7 +706,6 @@
   function updateScore() {
     document.getElementById('roundNum').textContent = round + ' of ' + TOTAL_ROUNDS;
     document.getElementById('scoreNum').textContent = score;
-    document.getElementById('boardNum').textContent = size + '×' + size;
     drawPips(document.getElementById('pips'));
   }
 
@@ -805,7 +808,7 @@
     stopRoundClock();
     document.body.classList.remove('ended');
     roundStartMs = null;
-    showRoundPts();
+    showRoundClock();
     round = 1; correct = 0; score = 0; answered = false; results = [];
     document.getElementById('final').hidden = true;
     document.getElementById('startModal').hidden = false;
