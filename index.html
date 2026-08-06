@@ -19,8 +19,23 @@
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     display: flex; flex-direction: column; align-items: center;
   }
-  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
-  .sub { color: #8a94a6; font-size: 14px; margin-bottom: 20px; text-align: center; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 20px; }
+
+  /* The opening screen. Covers everything until START is pressed — which is
+     also when the clock starts, so nobody is timed while reading the rules. */
+  .modal {
+    position: fixed; inset: 0; z-index: 20; background: #14161a;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .modal[hidden] { display: none; }
+  .card { max-width: 420px; text-align: center; }
+  .card h2 { font-size: 30px; font-weight: 600; margin: 0 0 16px; }
+  .card p { color: #8a94a6; font-size: 15px; line-height: 1.6; margin: 0 0 26px; }
+  #startBtn {
+    padding: 13px 42px; border-radius: 8px; cursor: pointer; font-size: 17px;
+    background: #59c67f; color: #10141a; border: none;
+    font-weight: 700; letter-spacing: 0.06em;
+  }
   .board {
     display: grid;
     grid-template-columns: var(--arrow) repeat(var(--n), var(--cell)) var(--arrow);
@@ -134,6 +149,25 @@
     font-size: 15px; background: #59c67f; color: #10141a; border: none; font-weight: 600;
   }
 
+  /* The shareable. Emoji squares are plain text, not an image — which is
+     why the result pastes into any chat app with nothing attached. */
+  .share {
+    margin-top: 22px; background: #1c212b; border: 1px solid #2e3542;
+    border-radius: 8px; padding: 14px 18px; max-width: 92vw;
+    font-size: 15px; color: #b9c2d0; line-height: 1.6;
+  }
+  .share .squares {
+    font-size: 21px; letter-spacing: 3px; line-height: 1.35; margin: 8px 0 6px;
+  }
+  .share .link { font-size: 12px; color: #808b9e; word-break: break-all; }
+  .sharebtns { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+  .sharebtns button {
+    padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;
+    background: #262c38; color: #b9c2d0; border: 1px solid #38404f; font-weight: 600;
+  }
+  .sharebtns button:hover { background: #333b4a; color: #fff; }
+  .sharebtns button[hidden] { display: none; }
+
   /* ---- Tablet and smaller (1024px or less) --------------------------------
      The HUD stops scrolling with the page and is pinned: across the top in
      portrait, down the right-hand side in landscape. Everything else is
@@ -141,8 +175,7 @@
 
   @media (max-width: 1024px) and (orientation: portrait) {
     body { padding: 10px; padding-top: calc(var(--hud-space) + 10px); }
-    h1 { font-size: 18px; }
-    .sub { font-size: 13px; margin-bottom: 14px; }
+    h1 { font-size: 18px; margin-bottom: 12px; }
 
     .hudwrap {
       position: fixed; top: 0; left: 0; right: 0; z-index: 5;
@@ -160,10 +193,11 @@
   }
 
   @media (max-width: 1024px) and (orientation: landscape) {
-    /* Only ~390px of height on a phone — the rules blurb costs too much of it. */
     body { padding: 8px; padding-right: 118px; }
+    /* The HUD lives inside #game, so it vanishes on the end screen — the
+       gap it was reserving should go with it. */
+    body.ended { padding-right: 8px; }
     h1 { font-size: 16px; margin-bottom: 8px; }
-    .sub { display: none; }
 
     .hudwrap {
       position: fixed; top: 8px; right: 8px; bottom: 8px; width: 102px;
@@ -209,14 +243,21 @@
 
 <div class="toastwrap"><div class="toast" id="toast"></div></div>
 
-<h1>Best Line</h1>
-<div class="sub">
-  Pick the row, column or diagonal most likely to come up all-matching if you
-  re-rolled it.<br>
-  Dice already showing the target number are kept — only the mismatched ones re-roll.
+<div class="modal" id="startModal">
+  <div class="card">
+    <h2>Best Line</h2>
+    <p>
+      Pick the row, column or diagonal most likely to come up all-matching if
+      you re-rolled it. Dice already showing the target number are kept — only
+      the mismatched ones re-roll.
+    </p>
+    <button id="startBtn">START</button>
+  </div>
 </div>
 
-<div id="game">
+<h1>Best Line</h1>
+
+<div id="game" hidden>
   <div class="hudwrap">
     <div class="hud">
       <div class="tile"><div class="big" id="roundNum">1 of 12</div><div class="lab">Round</div></div>
@@ -244,6 +285,13 @@
   <div class="outof" id="finalOutOf"></div>
   <div class="outof" id="finalTime"></div>
   <div class="pips" id="finalPips" style="justify-content: center"></div>
+
+  <div class="share" id="share" role="img" aria-label=""></div>
+  <div class="sharebtns">
+    <button id="copyBtn">Copy</button>
+    <button id="shareBtn" hidden>Share</button>
+  </div>
+
   <button id="playAgain">Play again</button>
 </div>
 
@@ -274,6 +322,9 @@
 
   const TOTAL_ROUNDS = 12;
 
+  // Where the game lives online. Change this one line if the address moves.
+  const SHARE_URL = 'https://jptreen.github.io/best-line/';
+
   let grid, round = 1, correct = 0, answered = false;
   let size = gridSize(1);
   let LINES = buildLines(size);
@@ -288,7 +339,10 @@
   }
 
   // The clock. Starts on the first pick, not on page load.
-  let startMs = null, tickHandle = null;
+  // finalMs freezes the elapsed time when the game ends. Without it, the
+  // share text would recompute from the clock and report a longer game the
+  // longer you sat on the end screen before pressing Copy.
+  let startMs = null, tickHandle = null, finalMs = 0;
 
   function fmt(ms) {
     const s = Math.floor(ms / 1000);
@@ -341,6 +395,38 @@
 
   function roll(sides) { return 1 + Math.floor(Math.random() * sides); }
 
+  // How many dice a single line may already show matching before the board
+  // is thrown away. A line that already holds three of a kind is findable by
+  // eye, which lets you skip the probability reasoning the game is about.
+  // Rounds 1-4 allow anything, so the puzzle can be learned before it bites.
+  //
+  // Measured over 8,000 accepted boards per round: banning 4+ leaves the
+  // best line about 1.7-2x better than the runner-up, banning 3+ narrows
+  // that to ~1.3x. Banning 2+ was tried and dropped — only 1 board in 85,000
+  // qualifies at 5x5, so the re-deal cap would swallow the rule entirely.
+  function banFrom(r) {
+    if (r <= 4) return Infinity;   // no limit
+    if (r <= 6) return 4;
+    if (r <= 8) return 3;
+    if (r <= 11) return 4;
+    return 3;
+  }
+
+  // True when no line already shows banFrom(round) or more of one number.
+  function noGiveawayLine() {
+    const limit = banFrom(round);
+    if (limit === Infinity) return true;
+    for (const line of LINES) {
+      const counts = {};
+      for (const [r, c] of line.cells) {
+        const v = grid[r][c].value;
+        counts[v] = (counts[v] || 0) + 1;
+        if (counts[v] >= limit) return false;
+      }
+    }
+    return true;
+  }
+
   // True when exactly one line is the best — no joint winners.
   function hasUniqueBest() {
     const ps = LINES.map(l => lineProbability(l));
@@ -366,7 +452,9 @@
         }
         grid.push(row);
       }
-      if (hasUniqueBest()) return;
+      // Cheap test first — no point pricing every line on a board we are
+      // about to throw away anyway.
+      if (noGiveawayLine() && hasUniqueBest()) return;
     }
   }
 
@@ -430,23 +518,34 @@
     root.style.setProperty('--hud-space', hudwrap.offsetHeight + 'px');
 
     // Render the board at a known size and see what it actually costs, so
-    // this keeps working even if the CSS proportions change later.
-    const TRIAL = 100;
+    // this keeps working even if the CSS proportions change later. Kept
+    // small so the trial itself never overflows and disturbs what we are
+    // about to measure.
+    const TRIAL = 40;
     root.style.setProperty('--cell', TRIAL + 'px');
     const wPer = board.offsetWidth / TRIAL, hPer = board.offsetHeight / TRIAL;
     if (!wPer || !hPer) { root.style.setProperty('--cell', CELL_MAX + 'px'); return; }
 
-    const box = board.getBoundingClientRect();
-    const top = box.top + window.scrollY, left = box.left + window.scrollX;
+    // Space comes from the page's own padding and the fixed pieces around
+    // the board — never from where the board is sitting. Its position moves
+    // with its size, which is the very thing being calculated.
+    const bs = getComputedStyle(document.body);
+    const padX = parseFloat(bs.paddingLeft) + parseFloat(bs.paddingRight);
+    const padY = parseFloat(bs.paddingTop) + parseFloat(bs.paddingBottom);
 
-    // In landscape the info column sits beside the board, so nothing is
-    // below it; in portrait the result and odds are, and they must fit too.
-    const below = landscape() ? 0 : document.querySelector('.info').offsetHeight + 10;
-    // Measured, not copied from the stylesheet — one number, one home.
-    const rightGuard = landscape() ? hudwrap.offsetWidth + 16 : 0;
+    const title = document.querySelector('h1'), ts = getComputedStyle(title);
+    const titleSpace = title.offsetHeight +
+                       parseFloat(ts.marginTop) + parseFloat(ts.marginBottom);
 
-    const availH = window.innerHeight - top - below - 10;
-    const availW = window.innerWidth - left - rightGuard - 10;
+    const info = document.querySelector('.info');
+    const SAFETY = 6;
+
+    // Landscape puts the info column beside the board; portrait puts it
+    // below. The pinned HUD is already paid for by the body's padding.
+    const availW = root.clientWidth - padX - SAFETY -
+                   (landscape() ? info.offsetWidth + 10 : 0);
+    const availH = root.clientHeight - padY - titleSpace - SAFETY -
+                   (landscape() ? 0 : info.offsetHeight);
 
     const cell = Math.min(availW / wPer, availH / hPer);
     root.style.setProperty('--cell',
@@ -500,7 +599,6 @@
   function choose(key) {
     if (answered) return;
     answered = true;
-    startClock();
 
     const scored = LINES.map(l => ({ line: l, p: lineProbability(l) }));
     const best = Math.max.apply(null, scored.map(s => s.p));
@@ -594,27 +692,91 @@
     updateScore();
   }
 
+  // Built once, used for both the block on screen and the text that gets
+  // copied — so the two can never drift apart.
+  function shareParts() {
+    const squares = results.map(r => r ? '🟩' : '🟥');
+    const rows = [];
+    for (let i = 0; i < squares.length; i += 6) rows.push(squares.slice(i, i + 6).join(''));
+    return {
+      head: 'Best Line — ' + correct + '/' + TOTAL_ROUNDS +
+            (finalMs ? ' in ' + fmt(finalMs) : ''),
+      rows: rows,
+      url: SHARE_URL
+    };
+  }
+
+  function shareText() {
+    const p = shareParts();
+    return [p.head].concat(p.rows, [p.url]).join('\n');
+  }
+
+  function renderShare() {
+    const p = shareParts();
+    const el = document.getElementById('share');
+    el.innerHTML = '<div>' + p.head + '</div>' +
+                   '<div class="squares">' + p.rows.join('<br>') + '</div>' +
+                   '<div class="link">' + p.url + '</div>';
+    // Screen readers announce this label instead of reading out twelve
+    // colour names one at a time.
+    el.setAttribute('aria-label', p.head);
+    // Only offer Share where the browser actually has a share sheet.
+    document.getElementById('shareBtn').hidden = !navigator.share;
+    document.getElementById('copyBtn').textContent = 'Copy';
+  }
+
+  // The modern clipboard call needs a secure page (https). Opened straight
+  // off your disk it may be missing, so fall back to the old way.
+  function copyShare() {
+    const text = shareText();
+    const done = () => {
+      const b = document.getElementById('copyBtn');
+      b.textContent = 'Copied!';
+      setTimeout(() => { b.textContent = 'Copy'; }, 1600);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done, fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+    function fallbackCopy() {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); }
+      catch (e) { document.getElementById('copyBtn').textContent = 'Copy failed'; }
+      document.body.removeChild(ta);
+    }
+  }
+
   function showFinal() {
     clearPending();
     hideToast();
     stopClock();
     document.getElementById('game').hidden = true;
     document.getElementById('final').hidden = false;
+    document.body.classList.add('ended');
+    finalMs = startMs === null ? 0 : Date.now() - startMs;
     document.getElementById('finalNum').textContent = correct;
     document.getElementById('finalTime').textContent =
-      startMs === null ? '' : 'in ' + fmt(Date.now() - startMs);
+      finalMs ? 'in ' + fmt(finalMs) : '';
     drawPips(document.getElementById('finalPips'));
+    renderShare();
   }
 
   function restart() {
     clearPending();
     hideToast();
     stopClock();
-    startMs = null;
+    document.body.classList.remove('ended');
+    startMs = null; finalMs = 0;
     showTime();
     round = 1; correct = 0; answered = false; results = [];
     document.getElementById('final').hidden = true;
-    document.getElementById('game').hidden = false;
+    document.getElementById('startModal').hidden = false;
     document.getElementById('result').className = 'result';
     document.getElementById('result').textContent = '';
     document.getElementById('next').hidden = true;
@@ -624,8 +786,23 @@
     updateScore();
   }
 
+  // START is the starting gun: it reveals the board and begins the clock,
+  // so the time never includes reading the rules.
+  function beginPlay() {
+    document.getElementById('startModal').hidden = true;
+    document.getElementById('game').hidden = false;
+    fitBoard();   // the board was dealt while hidden, so it needs sizing now
+    startClock();
+  }
+
+  document.getElementById('startBtn').onclick = beginPlay;
   document.getElementById('next').onclick = nextRound;
   document.getElementById('playAgain').onclick = restart;
+  document.getElementById('copyBtn').onclick = copyShare;
+  document.getElementById('shareBtn').onclick = () => {
+    // If you dismiss the share sheet the browser rejects — not an error.
+    navigator.share({ title: 'Best Line', text: shareText() }).catch(() => {});
+  };
   document.getElementById('finalOutOf').textContent =
     'correct out of ' + TOTAL_ROUNDS + ' boards';
 
