@@ -1,0 +1,40 @@
+name: Deploy to GitHub Pages
+
+# Runs whenever main changes, or when you click "Run workflow" by hand.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# The permissions this job needs in order to publish a site.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# If two deploys overlap, let the first one finish rather than killing it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Get the files
+        uses: actions/checkout@v4
+
+      - name: Work out the Pages settings
+        uses: actions/configure-pages@v5
+
+      - name: Bundle up everything in the repo
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Publish it
+        id: deployment
+        uses: actions/deploy-pages@v4
