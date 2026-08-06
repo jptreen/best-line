@@ -112,6 +112,7 @@
   }
   .tile .big { font-size: 28px; font-weight: 700; line-height: 1.1; }
   .tile .big.good { color: #59c67f; }
+  .tile .big.bad  { color: #e8695f; }
   .tile .lab {
     font-size: 11px; color: #808b9e; margin-top: 3px;
     text-transform: uppercase; letter-spacing: 0.07em;
@@ -261,9 +262,9 @@
   <div class="hudwrap">
     <div class="hud">
       <div class="tile"><div class="big" id="roundNum">1 of 12</div><div class="lab">Round</div></div>
-      <div class="tile"><div class="big good" id="correctNum">0</div><div class="lab">Correct</div></div>
+      <div class="tile"><div class="big good" id="scoreNum">0</div><div class="lab">Score</div></div>
       <div class="tile"><div class="big" id="boardNum">4×4</div><div class="lab">Board</div></div>
-      <div class="tile"><div class="big" id="timeNum">0:00</div><div class="lab">Time</div></div>
+      <div class="tile"><div class="big" id="roundPts">20</div><div class="lab">This round</div></div>
     </div>
     <div class="pips" id="pips"></div>
   </div>
@@ -325,7 +326,7 @@
   // Where the game lives online. Change this one line if the address moves.
   const SHARE_URL = 'https://jptreen.github.io/best-line/';
 
-  let grid, round = 1, correct = 0, answered = false;
+  let grid, round = 1, correct = 0, score = 0, answered = false;
   let size = gridSize(1);
   let LINES = buildLines(size);
   let results = [];   // results[i] is true/false once round i+1 has been played
@@ -338,26 +339,41 @@
     pending = [];
   }
 
-  // The clock. Starts on the first pick, not on page load.
-  // finalMs freezes the elapsed time when the game ends. Without it, the
-  // share text would recompute from the clock and report a longer game the
-  // longer you sat on the end screen before pressing Copy.
-  let startMs = null, tickHandle = null, finalMs = 0;
+  // Scoring. A round is worth PERFECT if you answer within FREE_SECONDS,
+  // then bleeds a point a second down to FLOOR. A wrong answer is worth
+  // nothing however fast it came.
+  const PERFECT = 20, FREE_SECONDS = 10, FLOOR = 10;
+  const MAX_SCORE = PERFECT * TOTAL_ROUNDS;
 
-  function fmt(ms) {
-    const s = Math.floor(ms / 1000);
-    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  // The one place the rule lives. Whole seconds only, so 10.9s still pays
+  // full marks and the tile never disagrees with the points awarded.
+  function scoreRound(ms) {
+    const over = Math.floor(ms / 1000) - FREE_SECONDS;
+    return Math.max(FLOOR, PERFECT - Math.max(0, over));
   }
-  function showTime() {
-    document.getElementById('timeNum').textContent =
-      fmt(startMs === null ? 0 : Date.now() - startMs);
+
+  // Your whole game as one number: points earned against points available.
+  function rating() {
+    return Math.round(score / MAX_SCORE * 100);
   }
-  function startClock() {
-    if (startMs !== null) return;
-    startMs = Date.now();
-    tickHandle = setInterval(showTime, 250);
+
+  // The clock runs per round, not per game: it starts when a board becomes
+  // answerable and stops the moment you pick.
+  let roundStartMs = null, tickHandle = null;
+
+  function showRoundPts() {
+    const el = document.getElementById('roundPts');
+    el.textContent = roundStartMs === null
+      ? PERFECT : scoreRound(Date.now() - roundStartMs);
+    el.classList.remove('bad');
   }
-  function stopClock() {
+  function startRoundClock() {
+    stopRoundClock();
+    roundStartMs = Date.now();
+    showRoundPts();
+    tickHandle = setInterval(showRoundPts, 250);
+  }
+  function stopRoundClock() {
     clearInterval(tickHandle);
     tickHandle = null;
   }
@@ -600,6 +616,10 @@
     if (answered) return;
     answered = true;
 
+    // Read the clock before anything else, so nothing below can cost points.
+    const tookMs = roundStartMs === null ? 0 : Date.now() - roundStartMs;
+    stopRoundClock();
+
     const scored = LINES.map(l => ({ line: l, p: lineProbability(l) }));
     const best = Math.max.apply(null, scored.map(s => s.p));
     const picked = scored.find(s => s.line.key === key);
@@ -608,6 +628,14 @@
     const gotIt = picked.p >= best - 1e-12;
     if (gotIt) correct++;
     results[round - 1] = gotIt;
+
+    const points = gotIt ? scoreRound(tookMs) : 0;
+    score += points;
+    // Freeze the tile on what was actually earned, red if that was nothing.
+    const ptsEl = document.getElementById('roundPts');
+    ptsEl.textContent = points;
+    ptsEl.classList.toggle('bad', points === 0);
+    const took = (tookMs / 1000).toFixed(1) + 's';
 
     const bestKeys = scored.filter(s => s.p >= best - 1e-12).map(s => s.line.key);
 
@@ -650,11 +678,13 @@
     const result = document.getElementById('result');
     if (gotIt) {
       result.className = 'result right';
-      result.textContent = 'Correct — ' + key + ' at ' + oneIn(picked.p) + ' is the best line.';
+      result.textContent = 'Correct — ' + key + ' at ' + oneIn(picked.p) +
+                           ' is the best line. +' + points + ' in ' + took + '.';
     } else {
       result.className = 'result wrong';
       result.textContent = 'Not quite — ' + key + ' is ' + oneIn(picked.p) +
-                           '. Best was ' + bestKeys.join(' / ') + ' at ' + oneIn(best) + '.';
+                           '. Best was ' + bestKeys.join(' / ') + ' at ' + oneIn(best) +
+                           '. +0.';
     }
 
     updateScore();
@@ -671,7 +701,7 @@
 
   function updateScore() {
     document.getElementById('roundNum').textContent = round + ' of ' + TOTAL_ROUNDS;
-    document.getElementById('correctNum').textContent = correct;
+    document.getElementById('scoreNum').textContent = score;
     document.getElementById('boardNum').textContent = size + '×' + size;
     drawPips(document.getElementById('pips'));
   }
@@ -690,6 +720,7 @@
     reserveOdds();
     draw();
     updateScore();
+    startRoundClock();
   }
 
   // Built once, used for both the block on screen and the text that gets
@@ -699,8 +730,8 @@
     const rows = [];
     for (let i = 0; i < squares.length; i += 6) rows.push(squares.slice(i, i + 6).join(''));
     return {
-      head: 'Best Line — ' + correct + '/' + TOTAL_ROUNDS +
-            (finalMs ? ' in ' + fmt(finalMs) : ''),
+      head: 'Best Line: ' + correct + '/' + TOTAL_ROUNDS +
+            '. BestLine Rating: ' + rating() + '%',
       rows: rows,
       url: SHARE_URL
     };
@@ -755,14 +786,15 @@
   function showFinal() {
     clearPending();
     hideToast();
-    stopClock();
+    stopRoundClock();
     document.getElementById('game').hidden = true;
     document.getElementById('final').hidden = false;
     document.body.classList.add('ended');
-    finalMs = startMs === null ? 0 : Date.now() - startMs;
-    document.getElementById('finalNum').textContent = correct;
+    document.getElementById('finalNum').textContent = rating() + '%';
+    document.getElementById('finalOutOf').textContent = 'BestLine Rating';
     document.getElementById('finalTime').textContent =
-      finalMs ? 'in ' + fmt(finalMs) : '';
+      score + ' of ' + MAX_SCORE + ' points · ' +
+      correct + ' of ' + TOTAL_ROUNDS + ' correct';
     drawPips(document.getElementById('finalPips'));
     renderShare();
   }
@@ -770,11 +802,11 @@
   function restart() {
     clearPending();
     hideToast();
-    stopClock();
+    stopRoundClock();
     document.body.classList.remove('ended');
-    startMs = null; finalMs = 0;
-    showTime();
-    round = 1; correct = 0; answered = false; results = [];
+    roundStartMs = null;
+    showRoundPts();
+    round = 1; correct = 0; score = 0; answered = false; results = [];
     document.getElementById('final').hidden = true;
     document.getElementById('startModal').hidden = false;
     document.getElementById('result').className = 'result';
@@ -786,13 +818,13 @@
     updateScore();
   }
 
-  // START is the starting gun: it reveals the board and begins the clock,
-  // so the time never includes reading the rules.
+  // START is the starting gun: it reveals the board and begins round 1's
+  // clock, so your time never includes reading the rules.
   function beginPlay() {
     document.getElementById('startModal').hidden = true;
     document.getElementById('game').hidden = false;
     fitBoard();   // the board was dealt while hidden, so it needs sizing now
-    startClock();
+    startRoundClock();
   }
 
   document.getElementById('startBtn').onclick = beginPlay;
@@ -803,9 +835,6 @@
     // If you dismiss the share sheet the browser rejects — not an error.
     navigator.share({ title: 'Best Line', text: shareText() }).catch(() => {});
   };
-  document.getElementById('finalOutOf').textContent =
-    'correct out of ' + TOTAL_ROUNDS + ' boards';
-
   newGrid();
   reserveOdds();
   draw();
