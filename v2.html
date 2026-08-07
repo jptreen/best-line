@@ -12,9 +12,9 @@
     --pick:  calc(var(--cell) * 0.59);   /* 40px at 68 */
     --n: 5;                              /* columns of dice — set by draw() */
     --hud-space: 96px;                   /* room kept for the pinned HUD */
-    /* Set by applyTierColour() — deep purple at the easiest tier, deep red
-       at the hardest. Everything that paints the page reads this one value. */
-    --bg: hsl(280, 12%, 10%);
+    /* Set by applyTierColour() — near-neutral violet at the easiest tier,
+       deep red at the hardest. Everything that paints the page reads this. */
+    --bg: oklch(17% 0.015 295);
   }
 
   body {
@@ -242,10 +242,7 @@
     </p>
     <p>
       You start with <b>30 seconds</b> and every correct answer buys you
-      <b>10 more</b>. The clock pauses while the answer is revealed. The
-      boards never stop getting dealt, and they get harder — watch the
-      colour. When the clock runs out you still finish the board you're
-      on: you've started, so you can finish.
+      <b>10 more</b>.
     </p>
     <button id="startBtn">START</button>
   </div>
@@ -363,17 +360,22 @@
     return t;
   }
 
-  // Purple at the gentlest tier, red at the hardest, with saturation climbing
-  // a fixed step each time so the page gets steadily more lurid as it bites.
-  const HUE_START = 280, HUE_END = 360, SAT_START = 12, SAT_STEP = 5, LIGHT = 10;
+  // Difficulty is an ordered scale, so use six deliberately chosen dark-theme
+  // colours rather than walking around the categorical rainbow. Lightness and
+  // chroma rise gently from violet through magenta to a hot red.
+  const TIER_BACKGROUNDS = [
+    'oklch(17% 0.015 295)',
+    'oklch(18% 0.035 280)',
+    'oklch(19% 0.050 300)',
+    'oklch(20% 0.065 330)',
+    'oklch(21% 0.080 15)',
+    'oklch(22% 0.095 30)'
+  ];
 
   function applyTierColour(r) {
     const t = difficultyTier(r);
-    const last = TIER_STARTS.length - 1;
-    const hue = HUE_START + (HUE_END - HUE_START) * (last ? t / last : 0);
-    const sat = SAT_START + SAT_STEP * t;
-    document.documentElement.style.setProperty(
-      '--bg', 'hsl(' + hue + ', ' + sat + '%, ' + LIGHT + '%)');
+    const paletteIndex = Math.min(t, TIER_BACKGROUNDS.length - 1);
+    document.documentElement.style.setProperty('--bg', TIER_BACKGROUNDS[paletteIndex]);
   }
 
   // The whole game is one countdown. It starts at START_MS, gains BONUS_MS
@@ -414,7 +416,7 @@
       // Not the end — you finish the board you started. The game stops when
       // you ask for the next one.
       timeExpired = true;
-      toast("Time's up — but you've started, so you can finish.");
+      toast("Time's up — but you've started, so you can finish your final round.");
       const next = document.getElementById('next');
       if (!next.hidden) next.textContent = 'See your final score';
       return;
