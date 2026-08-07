@@ -12,10 +12,14 @@
     --pick:  calc(var(--cell) * 0.59);   /* 40px at 68 */
     --n: 5;                              /* columns of dice — set by draw() */
     --hud-space: 96px;                   /* room kept for the pinned HUD */
+    /* Set by applyTierColour() — deep purple at the easiest tier, deep red
+       at the hardest. Everything that paints the page reads this one value. */
+    --bg: hsl(280, 12%, 10%);
   }
 
   body {
-    background: #14161a; color: #e6e6e6; margin: 0; padding: 24px;
+    background: var(--bg); color: #e6e6e6; margin: 0; padding: 24px;
+    transition: background-color .8s ease;
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     display: flex; flex-direction: column; align-items: center;
   }
@@ -24,7 +28,7 @@
   /* The opening screen. Covers everything until START is pressed — which is
      also when the clock starts, so nobody is timed while reading the rules. */
   .modal {
-    position: fixed; inset: 0; z-index: 20; background: #14161a;
+    position: fixed; inset: 0; z-index: 20; background: var(--bg);
     display: flex; align-items: center; justify-content: center; padding: 24px;
   }
   .modal[hidden] { display: none; }
@@ -173,7 +177,8 @@
 
     .hudwrap {
       position: fixed; top: 0; left: 0; right: 0; z-index: 5;
-      background: #14161a; padding: 8px 10px 7px;
+      background: var(--bg); transition: background-color .8s ease;
+      padding: 8px 10px 7px;
       border-bottom: 1px solid #232833;
     }
     .hud { gap: 6px; margin-bottom: 7px; width: 100%; }
@@ -236,9 +241,11 @@
       the mismatched ones re-roll.
     </p>
     <p>
-      You start with <b>60 seconds</b> and every correct answer buys you
-      <b>10 more</b>. The clock pauses while the answer is revealed. Keep
-      going until it runs out — the boards never stop getting dealt.
+      You start with <b>30 seconds</b> and every correct answer buys you
+      <b>10 more</b>. The clock pauses while the answer is revealed. The
+      boards never stop getting dealt, and they get harder — watch the
+      colour. When the clock runs out you still finish the board you're
+      on: you've started, so you can finish.
     </p>
     <button id="startBtn">START</button>
   </div>
@@ -283,9 +290,13 @@
 
 <script>
   // The game is endless, but the difficulty ramp is not. Every setting is
-  // read through this, so rounds past the last one on the ramp simply keep
-  // playing at its settings for ever.
-  function ramp(r) { return Math.min(r, HARDEST_ROUND); }
+  // read through this, so rounds past the last step simply keep playing at
+  // its settings for ever.
+  //
+  // PACE is how many real rounds each step of the ramp lasts. At 2, every
+  // phase below is twice as long as the numbers written in it suggest —
+  // change this one number to stretch or compress the whole game.
+  function ramp(r) { return Math.min(Math.ceil(r / PACE), HARDEST_ROUND); }
 
   // Which dice can appear, by round — three phases of four. Early rounds stay
   // simple; the last four bring in d4 and d20, where the odds swing hardest.
@@ -313,8 +324,10 @@
   }
 
   // The game never ends by running out of rounds — only by running out of
-  // time. This is the round whose difficulty everything past it reuses.
-  const HARDEST_ROUND = 12;
+  // time. HARDEST_ROUND is the last step of the ramp, in ramp steps; PACE is
+  // how many real rounds each step lasts. So the hardest setting arrives at
+  // round HARDEST_ROUND * PACE and stays for ever after.
+  const HARDEST_ROUND = 12, PACE = 2;
 
   // Where the game lives online. Change this one line if the address moves.
   const SHARE_URL = 'https://jptreen.github.io/best-line/v2.html';
@@ -331,11 +344,47 @@
     pending = [];
   }
 
+  // Where the difficulty actually changes, worked out by walking the rounds
+  // and noticing when any of the three settings differs from the round
+  // before. Derived rather than listed, so moving the ramp moves the colours
+  // with it instead of leaving them pointing at the wrong rounds.
+  const TIER_STARTS = (function () {
+    const sig = r => dicePool(r).join(',') + '|' + gridSize(r) + '|' + banFrom(r);
+    const starts = [1];
+    for (let r = 2; r <= HARDEST_ROUND * PACE; r++) {
+      if (sig(r) !== sig(r - 1)) starts.push(r);
+    }
+    return starts;
+  })();
+
+  function difficultyTier(r) {
+    let t = 0;
+    for (let i = 0; i < TIER_STARTS.length; i++) if (r >= TIER_STARTS[i]) t = i;
+    return t;
+  }
+
+  // Purple at the gentlest tier, red at the hardest, with saturation climbing
+  // a fixed step each time so the page gets steadily more lurid as it bites.
+  const HUE_START = 280, HUE_END = 360, SAT_START = 12, SAT_STEP = 5, LIGHT = 10;
+
+  function applyTierColour(r) {
+    const t = difficultyTier(r);
+    const last = TIER_STARTS.length - 1;
+    const hue = HUE_START + (HUE_END - HUE_START) * (last ? t / last : 0);
+    const sat = SAT_START + SAT_STEP * t;
+    document.documentElement.style.setProperty(
+      '--bg', 'hsl(' + hue + ', ' + sat + '%, ' + LIGHT + '%)');
+  }
+
   // The whole game is one countdown. It starts at START_MS, gains BONUS_MS
   // for every correct answer, and pauses while an answer is being revealed.
   // When it reaches zero the game is over, mid-round or not.
-  const START_MS = 60000, BONUS_MS = 10000;
+  const START_MS = 30000, BONUS_MS = 10000;
   const AMBER_MS = 20000, RED_MS = 10000;
+
+  // Set the moment the clock hits zero. The board you are on still counts —
+  // you just can't buy any more time with it.
+  let timeExpired = false;
 
   // remainingMs is the truth; lastTickMs is only used to work out how much
   // to take off it. Holding the remainder rather than an end-time is what
@@ -362,7 +411,12 @@
       remainingMs = 0;
       showClock();
       pauseClock();
-      timeUp();
+      // Not the end — you finish the board you started. The game stops when
+      // you ask for the next one.
+      timeExpired = true;
+      toast("Time's up — but you've started, so you can finish.");
+      const next = document.getElementById('next');
+      if (!next.hidden) next.textContent = 'See your final score';
       return;
     }
     showClock();
@@ -642,9 +696,10 @@
     const best = Math.max.apply(null, scored.map(s => s.p));
     const picked = scored.find(s => s.line.key === key);
 
-    // Ties count as correct — more than one line can be equally good.
+    // Ties count as correct — more than one line can be equally good. Once
+    // the clock is dead no answer can revive it; the board still counts.
     const gotIt = picked.p >= best - 1e-12;
-    if (gotIt) { correct++; addTime(BONUS_MS); }
+    if (gotIt) { correct++; if (!timeExpired) addTime(BONUS_MS); }
 
     const bestKeys = scored.filter(s => s.p >= best - 1e-12).map(s => s.line.key);
 
@@ -655,7 +710,7 @@
     });
     // Available straight away, so the reveal can be skipped.
     const next = document.getElementById('next');
-    next.textContent = 'Next board';
+    next.textContent = timeExpired ? 'See your final score' : 'Next board';
     next.hidden = false;
 
     const cellAt = (r, c) => document.querySelector('[data-pos="' + r + ',' + c + '"]');
@@ -705,10 +760,12 @@
 
   function nextRound() {
     clearPending();
-    if (remainingMs <= 0) { timeUp(); return; }
+    // The clock ran out during the board you just played — that was your last.
+    if (timeExpired) { timeUp(); return; }
     const stepUp = stepUpMessage(round, round + 1);
     round++;
     answered = false;
+    applyTierColour(round);
     if (stepUp) toast(stepUp);
     document.getElementById('result').className = 'result';
     document.getElementById('result').textContent = '';
@@ -798,8 +855,10 @@
     document.body.classList.remove('ended');
     remainingMs = START_MS;
     lastTickMs = null;
+    timeExpired = false;
     showClock();
     round = 1; correct = 0; answered = false;
+    applyTierColour(round);
     document.getElementById('final').hidden = true;
     document.getElementById('startModal').hidden = false;
     document.getElementById('result').className = 'result';
@@ -812,7 +871,7 @@
   }
 
   // START is the starting gun: it reveals the board and starts the countdown,
-  // so your minute never includes reading the rules.
+  // so your thirty seconds never include reading the rules.
   function beginPlay() {
     document.getElementById('startModal').hidden = true;
     document.getElementById('game').hidden = false;
@@ -832,4 +891,5 @@
   reserveOdds();
   draw();
   updateScore();
+  applyTierColour(round);   // so the start screen already wears tier 1's purple
 </script>
