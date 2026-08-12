@@ -1,0 +1,1185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dice language lab — Best Line</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #11151c;
+    --panel: #181e28;
+    --panel-raised: #1d2531;
+    --border: #2a3545;
+    --text: #edf2f7;
+    --muted: #8e9bae;
+    --quiet: #5e6b7e;
+    --accent: #f4bb62;
+    --good: #64d493;
+    --bad: #f17573;
+    --specimen-size: 92px;
+    --die-opacity: .15;
+    --roll-opacity: 1;
+    --type-opacity: .5;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    background:
+      radial-gradient(circle at 12% -10%, rgba(91, 112, 169, .14), transparent 35%),
+      radial-gradient(circle at 95% 4%, rgba(218, 126, 83, .08), transparent 28%),
+      var(--bg);
+    color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  button, input { font: inherit; }
+  button { color: inherit; }
+
+  .shell {
+    width: min(1180px, calc(100% - 40px));
+    margin: 0 auto;
+    padding: 52px 0 72px;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 13px;
+    color: #aab5c5;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+  }
+
+  .eyebrow::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(244, 187, 98, .12);
+  }
+
+  .topline {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 28px;
+  }
+
+  h1 {
+    max-width: 760px;
+    margin: 0;
+    font-size: clamp(36px, 6vw, 68px);
+    line-height: .98;
+    letter-spacing: -.055em;
+  }
+
+  .lede {
+    max-width: 720px;
+    margin: 23px 0 0;
+    color: #a8b4c4;
+    font-size: clamp(16px, 2vw, 19px);
+    line-height: 1.55;
+  }
+
+  .primary-button {
+    flex: none;
+    min-width: 122px;
+    padding: 12px 18px;
+    border: 1px solid #e7ad55;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #1b170f;
+    cursor: pointer;
+    font-weight: 800;
+    box-shadow: 0 9px 28px rgba(0, 0, 0, .22);
+    transition: transform .16s ease, filter .16s ease;
+  }
+
+  .primary-button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .primary-button:active { transform: translateY(1px); }
+
+  .principles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    overflow: hidden;
+    margin: 38px 0 0;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--border);
+  }
+
+  .principle {
+    min-height: 102px;
+    padding: 20px 22px;
+    background: rgba(24, 30, 40, .96);
+  }
+
+  .principle-number {
+    display: block;
+    margin-bottom: 9px;
+    color: var(--accent);
+    font: 800 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .11em;
+  }
+
+  .principle strong { display: block; margin-bottom: 4px; font-size: 15px; }
+  .principle p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+  .toolbar {
+    position: sticky;
+    top: 12px;
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 22px;
+    margin: 44px 0 22px;
+    padding: 12px 14px;
+    border: 1px solid rgba(54, 67, 85, .88);
+    border-radius: 13px;
+    background: rgba(22, 28, 38, .9);
+    box-shadow: 0 13px 36px rgba(0, 0, 0, .25);
+    backdrop-filter: blur(16px);
+  }
+
+  .control { display: flex; align-items: center; gap: 10px; }
+  .control-label { color: var(--muted); font-size: 12px; font-weight: 700; }
+
+  .segmented {
+    display: flex;
+    gap: 3px;
+    padding: 3px;
+    border-radius: 9px;
+    background: #10151d;
+  }
+
+  .segmented button {
+    padding: 7px 11px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 750;
+  }
+
+  .segmented button[aria-pressed="true"] {
+    background: #2b3544;
+    color: var(--text);
+    box-shadow: inset 0 0 0 1px #3b485b;
+  }
+
+  .range-wrap { display: flex; align-items: center; gap: 9px; }
+  input[type="range"] { width: 120px; accent-color: var(--accent); }
+  #sizeValue { min-width: 38px; color: #cad2de; font: 700 12px/1 ui-monospace, monospace; }
+
+  .opacity-control {
+    display: grid;
+    grid-template-columns: auto repeat(3, minmax(0, 1fr));
+    flex: 1 0 100%;
+    align-items: center;
+    gap: 10px 18px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(54, 67, 85, .65);
+  }
+
+  .opacity-item {
+    display: grid;
+    grid-template-columns: auto minmax(80px, 1fr) 42px;
+    align-items: center;
+    gap: 8px;
+    color: #bdc7d4;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .opacity-item input { width: 100%; }
+  .opacity-item output {
+    color: #cad2de;
+    font: 700 11px/1 ui-monospace, monospace;
+    text-align: right;
+  }
+
+  .ghost-button {
+    margin-left: auto;
+    padding: 8px 12px;
+    border: 1px solid #374355;
+    border-radius: 8px;
+    background: #252e3c;
+    color: #c9d2df;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 750;
+  }
+
+  .ghost-button:hover { border-color: #53627a; background: #303a4a; }
+
+  .section {
+    margin-top: 22px;
+    padding: 26px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: linear-gradient(145deg, rgba(29, 37, 49, .94), rgba(22, 28, 38, .94));
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .16);
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 25px;
+  }
+
+  .section h2 { margin: 0 0 4px; font-size: 18px; letter-spacing: -.015em; }
+  .section-heading p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
+  .section-kicker { color: var(--quiet); font: 800 10px/1 ui-monospace, monospace; letter-spacing: .12em; }
+
+  .specimens {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .specimen {
+    position: relative;
+    min-width: 0;
+    padding: 24px 8px 16px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    background: rgba(10, 14, 20, .25);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .18s ease, background .18s ease, transform .18s ease;
+  }
+
+  .specimen:hover {
+    border-color: #3a4658;
+    background: rgba(10, 14, 20, .46);
+    transform: translateY(-2px);
+  }
+
+  .specimen:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .specimen .die { margin: 0 auto; }
+  .specimen-name { margin: 14px 0 3px; font-size: 12px; font-weight: 800; }
+  .specimen-caption { color: var(--quiet); font-size: 10px; letter-spacing: .04em; }
+
+  .d10-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .d10-option {
+    min-width: 0;
+    padding: 20px 16px 16px;
+    border: 1px solid #2f3a4b;
+    border-radius: 15px;
+    background: rgba(10, 14, 20, .3);
+  }
+
+  .d10-option.selected {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px rgba(244, 187, 98, .15);
+  }
+
+  .d10-option.selected .d10-option-heading span { color: var(--accent); }
+
+  .d10-option-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .d10-option-heading strong { font-size: 13px; }
+  .d10-option-heading span { color: var(--quiet); font: 800 9px/1 ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase; }
+
+  .d10-option-scales {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 94px;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .d10-option-stage,
+  .d10-option-board {
+    display: grid;
+    min-width: 0;
+    border: 1px solid #293546;
+    border-radius: 12px;
+    background: #151b25;
+    place-items: center;
+  }
+
+  .d10-option-stage {
+    min-height: 142px;
+    padding: 16px;
+  }
+
+  .d10-option-stage .die { --specimen-size: 92px; }
+
+  .d10-option-board {
+    grid-template-rows: 1fr auto;
+    min-height: 142px;
+    padding: 16px 10px 11px;
+  }
+
+  .d10-option-board .die {
+    --specimen-size: 60px;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .24));
+  }
+
+  .d10-option-board .die .roll-number { font-size: 30px; }
+  .d10-option-board .die .type-label { font-size: 10.5px; }
+  .d10-scale-label { color: var(--quiet); font: 800 9px/1 ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
+
+  .d10-option-note {
+    margin: 13px 0 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .die {
+    position: relative;
+    width: var(--specimen-size);
+    height: var(--specimen-size);
+    color: var(--die-color);
+    filter: drop-shadow(0 8px 11px rgba(0, 0, 0, .28));
+    isolation: isolate;
+    transition: transform .18s ease, filter .18s ease;
+  }
+
+  .die svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .die .die-geometry { opacity: var(--die-opacity); }
+  .die .face {
+    fill: var(--die-color);
+    stroke: var(--die-edge);
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .die .facet-fill { fill: rgba(255, 255, 255, .08); }
+  .die .facet-line { fill: none; stroke: rgba(255, 255, 255, .22); stroke-width: 1.35; stroke-linejoin: round; stroke-linecap: round; }
+  .die .roll-number {
+    opacity: var(--roll-opacity);
+    fill: #fff;
+    font-size: 29px;
+    font-weight: 850;
+    letter-spacing: -.04em;
+    text-anchor: middle;
+    paint-order: stroke;
+    stroke: rgba(0, 0, 0, .14);
+    stroke-width: 1.5px;
+  }
+  .die .type-label {
+    opacity: var(--type-opacity);
+    fill: rgba(255, 255, 255, .76);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-anchor: middle;
+    paint-order: stroke;
+    stroke: rgba(0, 0, 0, .24);
+    stroke-width: 1.6px;
+  }
+
+  .die[data-sides="4"]  { --die-color: #d98436; --die-edge: #f4ad65; }
+  .die[data-sides="6"]  { --die-color: #d95368; --die-edge: #f08091; }
+  .die[data-sides="8"]  { --die-color: #198fa6; --die-edge: #51bfd0; }
+  .die[data-sides="10"] { --die-color: #526bd0; --die-edge: #8397e9; }
+  .die[data-sides="12"] { --die-color: #9360bd; --die-edge: #bb8cdb; }
+  .die[data-sides="20"] { --die-color: #288b69; --die-edge: #5dba95; }
+
+  body[data-treatment="clean"] .facet-fill,
+  body[data-treatment="clean"] .facet-line { opacity: 0; }
+
+  body[data-treatment="wire"] .die .face {
+    fill: color-mix(in srgb, var(--die-color) 22%, #171d27);
+    stroke-width: 3.2;
+  }
+  body[data-treatment="wire"] .die .facet-fill { opacity: 0; }
+  body[data-treatment="wire"] .die .facet-line { stroke: color-mix(in srgb, var(--die-edge) 72%, white); stroke-width: 1.75; }
+
+  .die.pop { animation: rollPop .32s cubic-bezier(.2, .8, .25, 1.18); }
+  @keyframes rollPop {
+    0% { transform: rotate(0) scale(1); }
+    45% { transform: rotate(-5deg) scale(.88); }
+    100% { transform: rotate(0) scale(1); }
+  }
+
+  .state-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .state-card {
+    padding: 17px 12px 14px;
+    border: 1px solid #2c3747;
+    border-radius: 13px;
+    background: rgba(12, 16, 23, .3);
+    text-align: center;
+  }
+
+  .state-stage {
+    position: relative;
+    display: grid;
+    width: 92px;
+    height: 92px;
+    margin: 0 auto 11px;
+    place-items: center;
+    border: 2px solid transparent;
+    border-radius: 16px;
+  }
+
+  .state-stage .die { --specimen-size: 74px; }
+  .state-stage.selected { border-color: var(--accent); background: rgba(244, 187, 98, .08); }
+  .state-stage.keep { border-color: var(--good); background: rgba(100, 212, 147, .08); }
+  .state-stage.reroll { border-color: var(--bad); background: rgba(241, 117, 115, .08); }
+  .state-stage.keep::after,
+  .state-stage.reroll::after {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    display: grid;
+    width: 23px;
+    height: 23px;
+    border-radius: 50%;
+    color: #11151c;
+    font-size: 13px;
+    font-weight: 900;
+    place-items: center;
+  }
+  .state-stage.keep::after { content: '\2713'; background: var(--good); }
+  .state-stage.reroll::after { content: '\21bb'; background: var(--bad); }
+  .state-card strong { display: block; font-size: 12px; }
+  .state-card span { color: var(--quiet); font-size: 10px; }
+
+  .stress-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 255px;
+    gap: 26px;
+    align-items: center;
+  }
+
+  .board-wrap {
+    overflow-x: auto;
+    padding: 17px;
+    border: 1px solid #283344;
+    border-radius: 14px;
+    background:
+      linear-gradient(rgba(255, 255, 255, .015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, .015) 1px, transparent 1px),
+      #121720;
+    background-size: 20px 20px;
+  }
+
+  .mini-board {
+    display: grid;
+    grid-template-columns: repeat(5, 68px);
+    gap: 7px;
+    width: max-content;
+    margin: auto;
+  }
+
+  .board-cell {
+    display: grid;
+    width: 68px;
+    height: 68px;
+    border: 1px solid #2d3848;
+    border-radius: 9px;
+    background: #1f2733;
+    place-items: center;
+  }
+
+  .board-cell .die {
+    --specimen-size: 60px;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .24));
+  }
+
+  .board-cell .die .roll-number { font-size: 30px; }
+  .board-cell .die .type-label { font-size: 10.5px; }
+
+  .stress-copy h3 { margin: 0 0 9px; font-size: 15px; }
+  .stress-copy p { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+  .checklist { display: grid; gap: 9px; }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: #bdc7d4;
+    font-size: 12px;
+  }
+  .check::before {
+    content: '\2713';
+    display: grid;
+    flex: none;
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    background: rgba(100, 212, 147, .13);
+    color: var(--good);
+    font-size: 11px;
+    font-weight: 900;
+    place-items: center;
+  }
+
+  .token-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+  }
+  .token {
+    overflow: hidden;
+    border: 1px solid #2c3747;
+    border-radius: 11px;
+    background: rgba(12, 16, 23, .3);
+  }
+  .swatch { height: 8px; background: var(--die-color); }
+  .token-copy { padding: 12px; }
+  .token-copy strong { display: block; margin-bottom: 3px; font-size: 12px; }
+  .token-copy span { color: var(--quiet); font: 700 10px/1 ui-monospace, monospace; }
+
+  .number-study {
+    --number-study-die-size: 60px;
+  }
+
+  .number-study-heading {
+    align-items: center;
+  }
+
+  .number-study-control {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px;
+    border: 1px solid #303c4e;
+    border-radius: 10px;
+    background: rgba(10, 14, 20, .34);
+    color: #bdc7d4;
+    font-size: 11px;
+    font-weight: 750;
+  }
+
+  .number-study-control input { width: 130px; }
+  .number-study-control output {
+    min-width: 35px;
+    color: var(--text);
+    font: 800 11px/1 ui-monospace, monospace;
+    text-align: right;
+  }
+
+  .number-study-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .number-study-option {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid #2d394a;
+    border-radius: 14px;
+    background: rgba(10, 14, 20, .28);
+  }
+
+  .number-study-option:first-child {
+    border-color: rgba(244, 187, 98, .58);
+    box-shadow: inset 0 0 0 1px rgba(244, 187, 98, .08);
+  }
+
+  .number-study-option-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .number-study-option-heading strong { font-size: 13px; }
+  .number-study-option-heading span {
+    color: var(--quiet);
+    font: 800 9px/1 ui-monospace, monospace;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .number-study-dice {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .number-study-cell {
+    display: grid;
+    min-width: 0;
+    aspect-ratio: 1;
+    padding: 3px;
+    border: 1px solid #2d3848;
+    border-radius: 9px;
+    background: #1f2733;
+    cursor: pointer;
+    place-items: center;
+  }
+
+  .number-study-cell:hover { border-color: #526078; }
+  .number-study-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .number-study-cell .die {
+    --specimen-size: min(var(--number-study-die-size), 100%);
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .24));
+  }
+  .number-study-cell .roll-number { font-size: var(--study-roll-size); }
+  .number-study-cell .type-label { font-size: 10px; }
+
+  .notes {
+    display: grid;
+    grid-template-columns: 1.2fr .8fr;
+    gap: 20px;
+    margin-top: 22px;
+  }
+  .note {
+    padding: 20px 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(24, 30, 40, .72);
+  }
+  .note h3 { margin: 0 0 8px; font-size: 14px; }
+  .note p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+  @media (max-width: 880px) {
+    .specimens, .token-grid { grid-template-columns: repeat(3, 1fr); }
+    .d10-options { grid-template-columns: 1fr; }
+    .number-study-options { grid-template-columns: 1fr; }
+    .stress-layout { grid-template-columns: 1fr; }
+    .stress-copy { max-width: 540px; }
+  }
+
+  @media (max-width: 620px) {
+    .shell { width: min(100% - 24px, 1180px); padding-top: 30px; }
+    .topline { display: block; }
+    .topline .primary-button { margin-top: 22px; }
+    .principles { grid-template-columns: 1fr; }
+    .toolbar { position: static; }
+    .control { width: 100%; justify-content: space-between; }
+    .segmented { flex: 1; }
+    .segmented button { flex: 1; padding-inline: 7px; }
+    .ghost-button { width: 100%; margin-left: 0; }
+    .opacity-control { grid-template-columns: 1fr; }
+    .opacity-item { grid-template-columns: 68px minmax(100px, 1fr) 42px; }
+    .section { padding: 19px 14px; }
+    .section-heading { align-items: flex-start; }
+    .section-kicker { display: none; }
+    .number-study-heading { display: grid; }
+    .number-study-control { width: 100%; justify-content: space-between; }
+    .number-study-control input { flex: 1; }
+    .specimens { grid-template-columns: repeat(2, 1fr); }
+    .d10-option { padding-inline: 12px; }
+    .state-row { grid-template-columns: repeat(2, 1fr); }
+    .token-grid { grid-template-columns: repeat(2, 1fr); }
+    .number-study-dice { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .notes { grid-template-columns: 1fr; }
+    .mini-board { grid-template-columns: repeat(5, 56px); gap: 5px; }
+    .board-cell { width: 56px; height: 56px; }
+    .board-cell .die { --specimen-size: 50px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body data-treatment="faceted">
+  <main class="shell">
+    <header>
+      <p class="eyebrow">Best Line / isolated playground</p>
+      <div class="topline">
+        <h1>Dice should introduce themselves.</h1>
+        <button class="primary-button" id="rollAll" type="button">Roll all</button>
+      </div>
+      <p class="lede">A visual language for mixed dice that is readable three ways at once: silhouette identifies the physical die, colour builds recognition over time, and the explicit d-number removes any ambiguity.</p>
+
+      <div class="principles" aria-label="Design principles">
+        <div class="principle">
+          <span class="principle-number">01 / SHAPE</span>
+          <strong>Recognisable in silhouette</strong>
+          <p>Each outline borrows the profile most often associated with the physical die.</p>
+        </div>
+        <div class="principle">
+          <span class="principle-number">02 / COLOUR</span>
+          <strong>A stable colour per type</strong>
+          <p>Six hues remain distinct on the dark game board without carrying meaning alone.</p>
+        </div>
+        <div class="principle">
+          <span class="principle-number">03 / LABEL</span>
+          <strong>The answer stays explicit</strong>
+          <p>Every shape keeps both the rolled value and its d4–d20 notation inside.</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="toolbar" aria-label="Playground controls">
+      <div class="control">
+        <span class="control-label">Treatment</span>
+        <div class="segmented" id="treatmentControl">
+          <button type="button" data-treatment="faceted" aria-pressed="true">Faceted</button>
+          <button type="button" data-treatment="clean" aria-pressed="false">Clean</button>
+          <button type="button" data-treatment="wire" aria-pressed="false">Wire</button>
+        </div>
+      </div>
+      <label class="control" for="sizeControl">
+        <span class="control-label">Hero size</span>
+        <span class="range-wrap">
+          <input id="sizeControl" type="range" min="62" max="112" value="92">
+          <output id="sizeValue" for="sizeControl">92px</output>
+        </span>
+      </label>
+      <button class="ghost-button" id="randomizeBoard" type="button">Randomize board</button>
+      <div class="opacity-control" aria-label="Dice opacity controls">
+        <span class="control-label">Opacity</span>
+        <label class="opacity-item" for="dieOpacity">
+          <span>Die body</span>
+          <input id="dieOpacity" type="range" min="0" max="100" value="15">
+          <output id="dieOpacityValue" for="dieOpacity">15%</output>
+        </label>
+        <label class="opacity-item" for="rollOpacity">
+          <span>Roll value</span>
+          <input id="rollOpacity" type="range" min="0" max="100" value="100">
+          <output id="rollOpacityValue" for="rollOpacity">100%</output>
+        </label>
+        <label class="opacity-item" for="typeOpacity">
+          <span>Die label</span>
+          <input id="typeOpacity" type="range" min="0" max="100" value="50">
+          <output id="typeOpacityValue" for="typeOpacity">50%</output>
+        </label>
+      </div>
+    </div>
+
+    <section class="section" aria-labelledby="primary-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="primary-title">Primary silhouettes</h2>
+          <p>Click any die to reroll it independently.</p>
+        </div>
+        <span class="section-kicker">HERO SCALE</span>
+      </div>
+      <div class="specimens" id="specimens"></div>
+    </section>
+
+    <section class="section" aria-labelledby="d10-options-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="d10-options-title">d10 axis study</h2>
+          <p>Three centred pentagonal-trapezohedron projections to audition before replacing the primary icon.</p>
+        </div>
+        <span class="section-kicker">92PX HERO + 60PX BOARD</span>
+      </div>
+      <div class="d10-options" id="d10Options"></div>
+    </section>
+
+    <section class="section" aria-labelledby="states-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="states-title">Game-state audition</h2>
+          <p>State belongs to the surrounding cell, so the die’s identity stays intact.</p>
+        </div>
+        <span class="section-kicker">ONE ICON / FOUR STATES</span>
+      </div>
+      <div class="state-row" id="stateRow"></div>
+    </section>
+
+    <section class="section" aria-labelledby="board-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="board-title">Board-scale stress test</h2>
+          <p>Mixed shapes at the game’s current 68px cell size.</p>
+        </div>
+        <span class="section-kicker">5 × 4 BOARD</span>
+      </div>
+      <div class="stress-layout">
+        <div class="board-wrap">
+          <div class="mini-board" id="miniBoard" aria-label="Example mixed dice board"></div>
+        </div>
+        <div class="stress-copy">
+          <h3>The silhouette does the first read.</h3>
+          <p>The value remains dominant, while the smaller die notation acts as a precise confirmation instead of competing for attention.</p>
+          <div class="checklist">
+            <div class="check">Shape survives at 60px</div>
+            <div class="check">Roll value stays most prominent</div>
+            <div class="check">d-number stays inside the face</div>
+            <div class="check">States never replace type colour</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="tokens-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="tokens-title">Colour and shape key</h2>
+          <p>Every colour has enough tonal range for a face, edge, and facets.</p>
+        </div>
+        <span class="section-kicker">REFERENCE TOKENS</span>
+      </div>
+      <div class="token-grid" id="tokenGrid"></div>
+    </section>
+
+    <div class="notes">
+      <article class="note">
+        <h3>Recommendation</h3>
+        <p><strong>Faceted</strong> is the strongest default. The inner geometry helps d10, d12, and d20 feel like physical polyhedral dice, while their outer silhouettes stay legible in peripheral vision.</p>
+      </article>
+      <article class="note">
+        <h3>Accessibility rule</h3>
+        <p>Colour is always redundant. A player can identify every die from shape plus its visible d-number, including in monochrome or reduced-contrast conditions.</p>
+      </article>
+    </div>
+
+    <section class="section number-study" id="numberStudy" aria-labelledby="number-study-title">
+      <div class="section-heading number-study-heading">
+        <div>
+          <h2 id="number-study-title">Roll-number scale study</h2>
+          <p>The die body, opacity, and d-label stay fixed. Compare four roll-number sizes across every silhouette.</p>
+        </div>
+        <label class="number-study-control" for="studyDieSize">
+          <span>Die canvas</span>
+          <input id="studyDieSize" type="range" min="44" max="68" value="60">
+          <output id="studyDieSizeValue" for="studyDieSize">60px</output>
+        </label>
+      </div>
+      <div class="number-study-options" id="numberStudyOptions"></div>
+    </section>
+  </main>
+
+<script>
+  const DICE = [
+    { sides: 4,  name: 'Tetrahedron', shape: 'Triangle', color: '#d98436' },
+    { sides: 6,  name: 'Cube',        shape: 'Rounded square', color: '#d95368' },
+    { sides: 8,  name: 'Octahedron',  shape: 'Diamond',  color: '#198fa6' },
+    { sides: 10, name: 'Trapezohedron', shape: 'Ten-kite spindle', color: '#526bd0' },
+    { sides: 12, name: 'Dodecahedron', shape: 'Pentagonal faces', color: '#9360bd' },
+    { sides: 20, name: 'Icosahedron', shape: 'Faceted hexagon', color: '#288b69' }
+  ];
+
+  // The same tangent-and-curve construction rounds every silhouette. The
+  // amount stays smaller on pointed solids and slightly larger on the cube.
+  function roundedPolygon(points, rounding) {
+    const pointAt = (from, to, distance) => {
+      const length = Math.hypot(to[0] - from[0], to[1] - from[1]);
+      const amount = Math.min(distance, length / 2) / length;
+      return [
+        from[0] + (to[0] - from[0]) * amount,
+        from[1] + (to[1] - from[1]) * amount
+      ];
+    };
+    const number = value => Number(value.toFixed(2));
+
+    return points.map((point, index) => {
+      const previous = points[(index - 1 + points.length) % points.length];
+      const next = points[(index + 1) % points.length];
+      const entry = pointAt(point, previous, rounding);
+      const exit = pointAt(point, next, rounding);
+      return `${index ? 'L' : 'M'}${number(entry[0])},${number(entry[1])} Q${point[0]},${point[1]} ${number(exit[0])},${number(exit[1])}`;
+    }).join(' ') + ' Z';
+  }
+
+  const FACE_PATHS = {
+    // d4 and d6 use optical sizing corrections of .94 and .86. Only the
+    // geometry is scaled around the centre; roll and d-label type stays fixed.
+    4: roundedPolygon([[50, 7.7], [93.24, 88.54], [6.76, 88.54]], 2.35),
+    6: roundedPolygon([[13.02, 13.02], [86.98, 13.02], [86.98, 86.98], [13.02, 86.98]], 6.02),
+    8: roundedPolygon([[50, 3], [95, 50], [50, 97], [5, 50]], 2.8),
+    10: roundedPolygon([[50, 4], [85, 35], [88, 64], [50, 96], [12, 64], [15, 35]], 2.6),
+    12: roundedPolygon([[50, 4], [78, 13], [95, 36], [95, 64], [78, 87], [50, 96], [22, 87], [5, 64], [5, 36], [22, 13]], 2.9),
+    20: roundedPolygon([[50, 3], [91, 27], [91, 73], [50, 97], [9, 73], [9, 27]], 2.8)
+  };
+
+  const FACETS = {
+    4: `
+      <polygon class="facet-fill" points="50,7.7 50,57.52 6.76,88.54"/>
+      <path class="facet-line" d="M50 7.7 L50 57.52 L6.76 88.54 M50 57.52 L93.24 88.54"/>`,
+    6: '',
+    8: `
+      <polygon class="facet-fill" points="50,3 50,50 5,50"/>
+      <path class="facet-line" d="M50 3 L50 97 M5 50 L50 50 L95 50"/>`,
+    // Selected reference-led d10: a central kite and four surrounding
+    // quadrilateral faces, all mirrored around the vertical pole axis.
+    10: `
+      <path class="facet-fill" d="M50 4 L28 63 L50 79 L72 63 Z"/>
+      <path class="facet-line" d="M50 4 L28 63 L50 79 L72 63 Z M28 63 L12 64 M50 79 L50 96 M72 63 L88 64"/>`,
+    12: `
+      <path class="facet-fill" d="${roundedPolygon([[50, 18], [78, 39], [67, 73], [33, 73], [22, 39]], 1.3)}"/>
+      <path class="facet-line" d="M50 18 L78 39 L67 73 L33 73 L22 39 Z M50 18 L50 4 M78 39 L95 36 M67 73 L78 87 M33 73 L22 87 M22 39 L5 36"/>`,
+    20: `
+      <polygon class="facet-fill" points="50,3 50,49 9,27"/>
+      <path class="facet-line" d="M50 3 L50 49 L9 27 M50 49 L91 27 M9 73 L50 49 L91 73 M50 49 L50 97 M9 27 L9 73 M91 27 L91 73"/>`
+  };
+
+  const D10_OPTIONS = [
+    {
+      id: 'face',
+      label: 'Option A',
+      name: 'Reference-led',
+      note: 'The supplied pattern: one dominant central kite, four surrounding faces, and a strict vertical axis.',
+      face: roundedPolygon([[50, 4], [85, 35], [88, 64], [50, 96], [12, 64], [15, 35]], 2.6),
+      facets: `
+        <path class="facet-fill" d="M50 4 L28 63 L50 79 L72 63 Z"/>
+        <path class="facet-line" d="M50 4 L28 63 L50 79 L72 63 Z M28 63 L12 64 M50 79 L50 96 M72 63 L88 64"/>`
+    },
+    {
+      id: 'belt',
+      label: 'Option B',
+      name: 'Belt-forward',
+      note: 'Four broad kites turn around one centred belt vertex for a more dimensional profile.',
+      face: roundedPolygon([[50, 4], [77, 23], [90, 47], [78, 72], [50, 96], [22, 72], [10, 47], [23, 23]], 2.6),
+      facets: `
+        <path class="facet-fill" d="M50 51 L50 4 L77 23 L90 47 Z"/>
+        <path class="facet-line" d="M50 51 L50 4 M50 51 L90 47 M50 51 L50 96 M50 51 L10 47"/>`
+    },
+    {
+      id: 'pole',
+      label: 'Option C',
+      name: 'Pole-forward',
+      note: 'Five visible kites meet at the pole; a compact, deliberately iconographic projection.',
+      face: roundedPolygon([[50, 4], [69, 14], [85, 33], [88, 57], [72, 82], [50, 96], [28, 82], [12, 57], [15, 33], [31, 14]], 2.6),
+      facets: `
+        <path class="facet-fill" d="M50 48 L31 14 L50 4 L69 14 Z"/>
+        <path class="facet-line" d="M50 48 L31 14 M50 48 L69 14 M50 48 L88 57 M50 48 L50 96 M50 48 L12 57"/>`
+    }
+  ];
+
+  const NUMBER_STUDY_OPTIONS = [
+    { label: 'A · Current v4', size: 29 },
+    { label: 'B · Larger', size: 36 },
+    { label: 'C · Prominent', size: 42 },
+    { label: 'D · Maximum trial', size: 48 }
+  ];
+
+  const randomRoll = sides => 1 + Math.floor(Math.random() * sides);
+
+  let dieInstance = 0;
+
+  function diceMarkup(sides, value, extraClass = '', rollY = 54, typeY = 70) {
+    const meta = DICE.find(die => die.sides === sides);
+    const clipId = `die-clip-${sides}-${++dieInstance}`;
+    return `
+      <div class="die ${extraClass}" data-sides="${sides}" role="img" aria-label="d${sides} showing ${value}">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <clipPath id="${clipId}"><path d="${FACE_PATHS[sides]}"/></clipPath>
+          </defs>
+          <g class="die-geometry">
+            <path class="face" d="${FACE_PATHS[sides]}"/>
+            <g clip-path="url(#${clipId})">${FACETS[sides]}</g>
+          </g>
+          <text class="roll-number" x="50" y="${rollY}">${value}</text>
+          <text class="type-label" x="50" y="${typeY}">D${sides}</text>
+        </svg>
+      </div>`;
+  }
+
+  function d10OptionMarkup(option, value, extraClass = '') {
+    const clipId = `d10-option-clip-${option.id}-${++dieInstance}`;
+    return `
+      <div class="die d10-option-die ${extraClass}" data-sides="10" role="img" aria-label="${option.name} d10 showing ${value}">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <clipPath id="${clipId}"><path d="${option.face}"/></clipPath>
+          </defs>
+          <g class="die-geometry">
+            <path class="face" d="${option.face}"/>
+            <g clip-path="url(#${clipId})">${option.facets}</g>
+          </g>
+          <text class="roll-number" x="50" y="54">${value}</text>
+          <text class="type-label" x="50" y="70">D10</text>
+        </svg>
+      </div>`;
+  }
+
+  function rerollElement(element) {
+    const die = element.classList.contains('die') ? element : element.querySelector('.die');
+    if (!die) return;
+    const sides = Number(die.dataset.sides);
+    const value = randomRoll(sides);
+    die.querySelector('.roll-number').textContent = value;
+    die.setAttribute('aria-label', `d${sides} showing ${value}`);
+    die.classList.remove('pop');
+    void die.offsetWidth;
+    die.classList.add('pop');
+  }
+
+  function renderSpecimens() {
+    const container = document.getElementById('specimens');
+    container.innerHTML = DICE.map((die, index) => `
+      <button class="specimen" type="button" aria-label="Reroll d${die.sides}">
+        ${diceMarkup(die.sides, Math.min(die.sides, [3, 5, 7, 9, 11, 17][index]))}
+        <div class="specimen-name">d${die.sides} · ${die.name}</div>
+        <div class="specimen-caption">${die.shape} profile</div>
+      </button>`).join('');
+    container.querySelectorAll('.specimen').forEach(button => {
+      button.addEventListener('click', () => rerollElement(button));
+    });
+  }
+
+  function renderStates() {
+    const states = [
+      { name: 'Resting', detail: 'Default board cell', className: '' },
+      { name: 'Selected', detail: 'Chosen line', className: 'selected' },
+      { name: 'Keep', detail: 'Already matching', className: 'keep' },
+      { name: 'Reroll', detail: 'Will roll again', className: 'reroll' }
+    ];
+    document.getElementById('stateRow').innerHTML = states.map(state => `
+      <div class="state-card">
+        <div class="state-stage ${state.className}">${diceMarkup(8, 7)}</div>
+        <strong>${state.name}</strong>
+        <span>${state.detail}</span>
+      </div>`).join('');
+  }
+
+  function renderD10Options() {
+    const container = document.getElementById('d10Options');
+    container.innerHTML = D10_OPTIONS.map((option, index) => {
+      const value = [10, 7, 4][index];
+      return `
+        <article class="d10-option${index === 0 ? ' selected' : ''}">
+          <div class="d10-option-heading">
+            <strong>${option.label} · ${option.name}</strong>
+            <span>${index === 0 ? 'Selected' : 'on-axis'}</span>
+          </div>
+          <div class="d10-option-scales">
+            <div class="d10-option-stage">${d10OptionMarkup(option, value)}</div>
+            <div class="d10-option-board">
+              ${d10OptionMarkup(option, value)}
+              <span class="d10-scale-label">60px</span>
+            </div>
+          </div>
+          <p class="d10-option-note">${option.note}</p>
+        </article>`;
+    }).join('');
+  }
+
+  function renderBoard() {
+    const board = document.getElementById('miniBoard');
+    board.innerHTML = Array.from({ length: 20 }, (_, index) => {
+      const die = DICE[(index * 5 + Math.floor(index / 4) * 3) % DICE.length];
+      return `<div class="board-cell">${diceMarkup(die.sides, randomRoll(die.sides))}</div>`;
+    }).join('');
+  }
+
+  function renderTokens() {
+    document.getElementById('tokenGrid').innerHTML = DICE.map(die => `
+      <div class="token" style="--die-color: ${die.color}">
+        <div class="swatch"></div>
+        <div class="token-copy">
+          <strong>d${die.sides} · ${die.shape}</strong>
+          <span>${die.color.toUpperCase()}</span>
+        </div>
+      </div>`).join('');
+  }
+
+  function updateNumberStudyScale(size) {
+    const section = document.getElementById('numberStudy');
+    section.style.setProperty('--number-study-die-size', `${size}px`);
+    document.getElementById('studyDieSizeValue').textContent = `${size}px`;
+    section.querySelectorAll('[data-roll-size]').forEach(label => {
+      const rollSize = Number(label.dataset.rollSize);
+      label.textContent = `${rollSize} scale · ${(rollSize * size / 100).toFixed(1)}px here`;
+    });
+  }
+
+  function numberStudyRollY(fontSize) {
+    // SVG text positions use the baseline, not the visual centre. Compensate
+    // for the taller glyph box so every option remains centred like A.
+    return Number((54 + (fontSize - 29) * .37).toFixed(1));
+  }
+
+  function numberStudyTypeY(fontSize) {
+    return Number((numberStudyRollY(fontSize) + 16).toFixed(1));
+  }
+
+  function renderNumberStudy() {
+    const values = { 4: 4, 6: 6, 8: 8, 10: 10, 12: 12, 20: 20 };
+    const container = document.getElementById('numberStudyOptions');
+    container.innerHTML = NUMBER_STUDY_OPTIONS.map(option => `
+      <article class="number-study-option" style="--study-roll-size: ${option.size}px">
+        <div class="number-study-option-heading">
+          <strong>${option.label}</strong>
+          <span data-roll-size="${option.size}"></span>
+        </div>
+        <div class="number-study-dice">
+          ${DICE.map(die => `
+            <button class="number-study-cell" type="button" aria-label="Reroll d${die.sides} in the ${option.size} scale study">
+              ${diceMarkup(
+                die.sides,
+                values[die.sides],
+                '',
+                numberStudyRollY(option.size),
+                numberStudyTypeY(option.size)
+              )}
+            </button>`).join('')}
+        </div>
+      </article>`).join('');
+
+    container.querySelectorAll('.number-study-cell').forEach(button => {
+      button.addEventListener('click', () => rerollElement(button));
+    });
+    updateNumberStudyScale(Number(document.getElementById('studyDieSize').value));
+  }
+
+  document.getElementById('treatmentControl').addEventListener('click', event => {
+    const button = event.target.closest('button[data-treatment]');
+    if (!button) return;
+    document.body.dataset.treatment = button.dataset.treatment;
+    document.querySelectorAll('#treatmentControl button').forEach(item => {
+      item.setAttribute('aria-pressed', String(item === button));
+    });
+  });
+
+  document.getElementById('sizeControl').addEventListener('input', event => {
+    const value = event.target.value;
+    document.documentElement.style.setProperty('--specimen-size', `${value}px`);
+    document.getElementById('sizeValue').textContent = `${value}px`;
+  });
+
+  [
+    ['dieOpacity', 'dieOpacityValue', '--die-opacity'],
+    ['rollOpacity', 'rollOpacityValue', '--roll-opacity'],
+    ['typeOpacity', 'typeOpacityValue', '--type-opacity']
+  ].forEach(([inputId, outputId, property]) => {
+    document.getElementById(inputId).addEventListener('input', event => {
+      const value = Number(event.target.value);
+      document.documentElement.style.setProperty(property, String(value / 100));
+      document.getElementById(outputId).textContent = `${value}%`;
+    });
+  });
+
+  document.getElementById('rollAll').addEventListener('click', () => {
+    document.querySelectorAll('.die').forEach(die => rerollElement(die));
+  });
+  document.getElementById('randomizeBoard').addEventListener('click', renderBoard);
+  document.getElementById('studyDieSize').addEventListener('input', event => {
+    updateNumberStudyScale(Number(event.target.value));
+  });
+
+  renderSpecimens();
+  renderD10Options();
+  renderStates();
+  renderBoard();
+  renderTokens();
+  renderNumberStudy();
+</script>
+</body>
+</html>

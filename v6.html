@@ -1,0 +1,1819 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Likely Lines v6 — 15-second 3×3 build</title>
+<style>
+  :root {
+    --cell: 68px;
+    --gap: calc(var(--cell) * 0.09);
+    --arrow: calc(var(--cell) * 0.65);
+    --pick: calc(var(--cell) * 0.59);
+    --n: 4;
+    --hud-space: 102px;
+    --bg: oklch(17% 0.015 295);
+    --panel: #1c212b;
+    --cell-bg: #232833;
+    --border: #2e3542;
+    --text: #e6e6e6;
+    --muted: #8994a7;
+    --green: #59c67f;
+    --red: #e8695f;
+    --amber: #f0a03c;
+    --cyan: #62c5d8;
+    --die-opacity: .15;
+    --roll-opacity: 1;
+    --type-opacity: .5;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    min-height: 100vh; margin: 0; padding: 20px;
+    background: var(--bg); color: var(--text);
+    transition: background-color .7s ease;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  h1 { font-size: 20px; font-weight: 650; margin: 0 0 16px; }
+  button { font: inherit; }
+
+  .modal {
+    position: fixed; inset: 0; z-index: 30; padding: 24px;
+    background: var(--bg); transition: background-color .7s ease;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal[hidden], #game[hidden], .final[hidden] { display: none; }
+  .card {
+    width: min(440px, 100%); padding: 40px 20px;
+    border-radius: 5px; background: #000; text-align: center;
+  }
+  .card h2 { font-size: 32px; font-weight: 700; margin: 0 0 14px; }
+  .card p { color: var(--muted); font-size: 15px; line-height: 1.55; margin: 0 0 16px; }
+  .card strong { color: var(--text); }
+  .preview-note {
+    margin: 18px 0 0; padding: 10px 12px; border-radius: 8px;
+    color: #bcecf3; background: rgba(98, 197, 216, .1);
+    border: 1px solid rgba(98, 197, 216, .35); font-size: 13px;
+  }
+  .intro-high-score {
+    margin: 17px 0 15px; color: var(--green); font-size: 13px;
+    font-weight: 750; letter-spacing: .07em;
+  }
+  .intro-high-score[hidden] { display: none; }
+  .intro-demo {
+    width: min(290px, 100%); margin: 0 auto 12px; padding: 10px;
+    border-radius: 5px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .demo-row { display: flex; justify-content: center; gap: 6px; }
+  .demo-row .demo-die {
+    width: 54px; height: 54px; border-radius: 7px;
+  }
+  .demo-row .demo-die .sides { margin-top: 3px; font-size: 10px; }
+  .demo-row .demo-die.reroll {
+    border-color: var(--amber); background: #332719;
+    box-shadow: inset 0 0 0 1px rgba(240, 160, 60, .22);
+  }
+  .demo-row .demo-die.reroll .value,
+  .demo-row .demo-die.reroll .sides { color: #f5b765; fill: #f5b765; }
+  .demo-odds {
+    margin: 6px 0 8px; color: var(--amber); font-size: 14px; font-weight: 700;
+  }
+  .demo-explanation {
+    width: 100%; margin: 4px 0 16px !important; padding: 15px 20px;
+    color: var(--muted) !important;
+    font-size: 13px !important; line-height: 1.45 !important;
+  }
+  .demo-explanation[hidden] { display: none; }
+  .primary {
+    margin-top: 10px; padding: 13px 42px; border: 0; border-radius: 8px;
+    cursor: pointer; background: var(--green); color: #10141a;
+    font-weight: 750; letter-spacing: .05em;
+  }
+  .secondary {
+    padding: 12px 24px; border: 1px solid #38404f; border-radius: 8px;
+    cursor: pointer; background: #262c38; color: #b9c2d0;
+    font-weight: 700; letter-spacing: .04em;
+  }
+  .secondary:hover { background: #333b4a; color: #fff; }
+  .start-actions {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    margin-top: 24px;
+  }
+  .start-actions button { width: min(220px, 100%); margin: 0; }
+
+  .tutorial-modal { z-index: 40; }
+  .tutorial-card { width: min(440px, 100%); padding: 32px 20px 24px; }
+  .tutorial-card h2 {
+    margin-bottom: 18px; font-size: 22px; letter-spacing: .035em;
+  }
+  .tutorial-page[hidden] { display: none; }
+  .tutorial-page {
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .tutorial-page .intro-demo { margin-bottom: 0; }
+  .tutorial-board {
+    --cell: 44px; --gap: calc(var(--cell) * 0.09);
+    --arrow: calc(var(--cell) * 0.65); --pick: calc(var(--cell) * 0.59);
+    --n: 4;
+    margin: 2px auto 16px;
+  }
+  .tutorial-board button.pick { cursor: pointer; }
+  .tutorial-copy { width: min(330px, 100%); }
+  .tutorial-copy p { margin-bottom: 8px; }
+  .tutorial-feedback {
+    min-height: 21px; margin-top: 5px; color: var(--muted);
+    font-size: 13px; font-weight: 650;
+  }
+  .tutorial-feedback.right { color: var(--green); }
+  .tutorial-feedback.wrong { color: var(--red); }
+  .tutorial-controls {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-top: 16px;
+  }
+  .tutorial-controls button { min-width: 112px; margin: 0; }
+
+  #game { width: 100%; display: flex; flex-direction: column; align-items: center; }
+  .hudwrap { display: flex; flex-direction: column; align-items: center; }
+  .hud { display: flex; gap: 9px; margin-bottom: 10px; }
+  .tile {
+    min-width: 91px; padding: 7px 12px; text-align: center;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--panel);
+  }
+  .tile .big { font-size: 24px; font-weight: 750; line-height: 1.1; }
+  .tile .big.good { color: var(--green); }
+  .tile .big.warn { color: #e8b44f; }
+  .tile .big.bad { color: var(--red); }
+  .tile .lab {
+    margin-top: 3px; color: var(--muted); font-size: 10px;
+    text-transform: uppercase; letter-spacing: .07em;
+  }
+  .hearts { letter-spacing: 3px; }
+
+  .level-strip {
+    min-height: 22px; margin-bottom: 14px; color: var(--muted);
+    font-size: 12px; text-align: center;
+  }
+  .level-strip b { color: var(--text); font-weight: 650; }
+  .level-strip .boss-tag { color: var(--amber); font-weight: 800; letter-spacing: .06em; }
+  .level-strip .debug-tag { color: var(--cyan); font-weight: 750; }
+
+  .play { display: flex; flex-direction: column; align-items: center; }
+  .board-stage { position: relative; display: grid; width: max-content; }
+  .board {
+    display: grid;
+    grid-template-columns: var(--arrow) repeat(var(--n), var(--cell)) var(--arrow);
+    gap: var(--gap); align-items: center; justify-items: center;
+  }
+  .cell {
+    position: relative; overflow: hidden;
+    width: var(--cell); height: var(--cell);
+    border: 2px solid var(--border); border-radius: calc(var(--cell) * .118);
+    background: var(--cell-bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    will-change: transform;
+  }
+  .value { font-size: calc(var(--cell) * .382); font-weight: 750; line-height: 1; }
+  .sides {
+    margin-top: calc(var(--cell) * .059);
+    color: var(--muted); font-size: calc(var(--cell) * .162);
+  }
+  .die-visual {
+    width: 100%; height: 100%; pointer-events: none;
+    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .18));
+  }
+  .die-visual svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .die-visual .die-geometry { opacity: var(--die-opacity); }
+  .die-visual .face {
+    fill: var(--die-color); stroke: var(--die-edge); stroke-width: 2.6;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .die-visual .facet-fill { fill: rgba(255, 255, 255, .08); }
+  .die-visual .facet-line {
+    fill: none; stroke: rgba(255, 255, 255, .22); stroke-width: 1.35;
+    stroke-linejoin: round; stroke-linecap: round;
+  }
+  .die-visual .value {
+    opacity: var(--roll-opacity); fill: #fff; font-size: 42px;
+    font-weight: 850; letter-spacing: -.04em; text-anchor: middle;
+    paint-order: stroke; stroke: rgba(0, 0, 0, .18); stroke-width: 1.5px;
+    transform-box: fill-box; transform-origin: center;
+  }
+  .die-visual .sides {
+    opacity: var(--type-opacity); fill: #fff; font-size: 10px;
+    font-weight: 800; letter-spacing: .08em; text-anchor: middle;
+    paint-order: stroke; stroke: rgba(0, 0, 0, .24); stroke-width: 1.6px;
+  }
+  .die-visual[data-sides="4"]  { --die-color: #d98436; --die-edge: #f4ad65; }
+  .die-visual[data-sides="6"]  { --die-color: #d95368; --die-edge: #f08091; }
+  .die-visual[data-sides="8"]  { --die-color: #198fa6; --die-edge: #51bfd0; }
+  .die-visual[data-sides="10"] { --die-color: #526bd0; --die-edge: #8397e9; }
+  .die-visual[data-sides="12"] { --die-color: #9360bd; --die-edge: #bb8cdb; }
+  .die-visual[data-sides="20"] { --die-color: #288b69; --die-edge: #5dba95; }
+  #board.round-reveal .die-geometry {
+    animation: roundBodyFade 5s cubic-bezier(.16, 1, .3, 1) both;
+  }
+  #board.round-reveal .sides {
+    animation: roundLabelFade 5s cubic-bezier(.16, 1, .3, 1) both;
+  }
+  body.game-paused #board.round-reveal .die-geometry,
+  body.game-paused #board.round-reveal .sides {
+    animation-play-state: paused;
+  }
+  #board.success-hold.round-reveal .die-geometry,
+  #board.success-hold.round-reveal .sides {
+    animation-play-state: paused;
+  }
+  #board.success-hold .cell.answer-sweep {
+    animation: successCellSweep 650ms ease-in-out var(--line-delay, 0ms) both;
+  }
+  #board.success-hold .cell.answer-sweep .die-geometry {
+    animation: successBodySweep 650ms ease-in-out var(--line-delay, 0ms) both;
+  }
+  #board.success-hold .cell.answer-sweep .sides {
+    animation: successLabelSweep 650ms ease-in-out var(--line-delay, 0ms) both;
+  }
+  @keyframes roundBodyFade {
+    from { opacity: 1; }
+    to { opacity: var(--die-opacity); }
+  }
+  @keyframes roundLabelFade {
+    from { opacity: 1; }
+    to { opacity: var(--type-opacity); }
+  }
+  @keyframes successCellSweep {
+    0%, 100% {
+      background: var(--cell-bg);
+      border-color: var(--border);
+      box-shadow: 0 0 0 0 rgba(89, 198, 127, 0);
+    }
+    40%, 62% {
+      background: #1e3326;
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(89, 198, 127, .22);
+    }
+  }
+  @keyframes successBodySweep {
+    0%, 100% { opacity: var(--success-body-start); }
+    42%, 64% { opacity: 1; }
+  }
+  @keyframes successLabelSweep {
+    0%, 100% { opacity: var(--success-label-start); }
+    42%, 64% { opacity: 1; }
+  }
+  .pause-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: grid;
+    min-width: 100%;
+    min-height: 100%;
+    padding: 28px;
+    border: 2px solid #46536a;
+    border-radius: 12px;
+    background: #141922;
+    text-align: center;
+    place-content: center;
+  }
+  .pause-overlay[hidden] { display: none; }
+  .pause-overlay strong {
+    font-size: clamp(30px, 7vw, 54px);
+    letter-spacing: .08em;
+  }
+  .pause-overlay span {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 650;
+  }
+  body.game-paused #board { visibility: hidden; }
+  .cell.rotating { border-color: rgba(98, 197, 216, .72); }
+  .cell.rotating::after {
+    content: '↕'; position: absolute; top: 2px; right: 4px;
+    color: var(--cyan); font-size: calc(var(--cell) * .19); font-weight: 800;
+  }
+  .cell.shift-lane { box-shadow: inset 0 0 0 1px rgba(240, 160, 60, .38); }
+  .cell.teleporter { border-style: dashed; border-color: rgba(203, 123, 235, .82); }
+  .cell.teleporter::before {
+    content: '✦'; position: absolute; top: 2px; left: 5px;
+    color: #d89af0; font-size: calc(var(--cell) * .17);
+  }
+  .cell.value-tick .value { animation: valueTick .25s ease-out; }
+  .cell.moved { animation: movedGlow .42s ease-out; }
+  .cell.wrong-mark {
+    background: #3b2421; border-color: var(--red);
+    box-shadow: inset 0 0 0 1px rgba(232, 105, 95, .22);
+  }
+  .cell.wrong-mark.wrong-sweep {
+    animation: wrongLineSweep 420ms ease-in var(--line-delay, 0ms) both;
+  }
+  .cell.answer-mark {
+    background: #1e3326; border-color: var(--green);
+    box-shadow: 0 0 0 3px rgba(89, 198, 127, .22);
+  }
+  @keyframes valueTick {
+    0% { transform: scale(.72); opacity: .5; }
+    70% { transform: scale(1.17); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  @keyframes movedGlow {
+    0% { box-shadow: 0 0 0 3px rgba(240, 160, 60, .45); }
+    100% { box-shadow: 0 0 0 0 rgba(240, 160, 60, 0); }
+  }
+  @keyframes wrongLineSweep {
+    from {
+      background: var(--cell-bg);
+      border-color: var(--border);
+      box-shadow: inset 0 0 0 0 rgba(232, 105, 95, 0);
+    }
+    to {
+      background: #3b2421;
+      border-color: var(--red);
+      box-shadow: inset 0 0 0 1px rgba(232, 105, 95, .22);
+    }
+  }
+
+  button.pick {
+    width: var(--pick); height: var(--pick); padding: 0;
+    border: 1px solid #38404f; border-radius: calc(var(--cell) * .088);
+    cursor: pointer; background: #262c38; color: #b9c2d0;
+    font-size: calc(var(--cell) * .235); font-weight: 650;
+  }
+  button.pick:hover:not(:disabled) { background: #333b4a; color: #fff; }
+  button.pick:disabled { cursor: default; opacity: .52; }
+  button.pick.wrong-pick {
+    background: #472522; color: #f3a49e; border-color: var(--red);
+    animation: pickWrong .34s ease-out;
+  }
+  button.pick.answer-pick {
+    background: #1e3326; color: #9be4b5; border-color: var(--green);
+    box-shadow: 0 0 0 2px rgba(89, 198, 127, .22);
+  }
+  @keyframes pickWrong {
+    0%, 100% { background: #262c38; color: #b9c2d0; }
+    45% { background: var(--red); color: #17191d; border-color: var(--red); }
+  }
+
+  .status {
+    min-height: 28px; margin-top: 16px; font-size: 16px; text-align: center;
+  }
+  .status.right { color: var(--green); }
+  .status.wrong { color: var(--red); }
+  #seeScore {
+    margin-top: 12px; padding: 8px 16px; border: 0; border-radius: 6px;
+    cursor: pointer; background: var(--green); color: #10141a; font-weight: 700;
+  }
+  #seeScore[hidden] { display: none; }
+
+  .toastwrap {
+    position: fixed; top: 16px; left: 0; right: 0; z-index: 20;
+    display: flex; justify-content: center; pointer-events: none;
+  }
+  .toast {
+    max-width: min(520px, 84vw); padding: 10px 18px;
+    border: 1px solid var(--amber); border-radius: 8px;
+    background: #2a2118; color: #f5c27d; font-size: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+    opacity: 0; transform: translateY(-14px);
+    transition: opacity .22s ease, transform .22s ease;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .final { width: min(460px, 100%); margin-top: 24px; text-align: center; }
+  body.ended > h1 { display: none; }
+  .final .scoreline { color: var(--green); line-height: 1; }
+  .final .num { font-size: 66px; font-weight: 780; }
+  .final .score-unit { font-size: 23px; font-weight: 700; }
+  .high-score-status { margin-top: 12px; color: #b9c2d0; font-size: 15px; }
+  .high-score-status.new { color: var(--green); font-weight: 750; letter-spacing: .035em; }
+  .share {
+    margin-top: 20px; padding: 14px 18px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--panel); color: #b9c2d0; line-height: 1.55;
+  }
+  .share .share-score { color: var(--text); font-size: 18px; font-weight: 700; }
+  .share .squares { margin: 7px 0 5px; font-size: 20px; letter-spacing: 2px; }
+  .share .link { color: var(--muted); font-size: 12px; word-break: break-all; }
+  .sharebtns { display: flex; justify-content: center; gap: 10px; margin-top: 11px; }
+  .sharebtns button, #playAgain {
+    padding: 8px 16px; border: 1px solid #38404f; border-radius: 6px;
+    cursor: pointer; background: #262c38; color: #b9c2d0; font-weight: 650;
+  }
+  #playAgain { margin-top: 22px; background: var(--green); color: #10141a; border: 0; }
+
+  @media (max-width: 1024px) and (orientation: portrait) {
+    body { padding: 8px; padding-top: calc(var(--hud-space) + 8px); }
+    h1 { margin-bottom: 10px; font-size: 17px; }
+    .tutorial-board { --cell: 40px; }
+    .hudwrap {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      padding: 7px 8px 5px; background: var(--bg);
+      border-bottom: 1px solid #232833; transition: background-color .7s ease;
+    }
+    .hud { width: 100%; gap: 5px; margin-bottom: 5px; }
+    .tile { min-width: 0; flex: 1; padding: 4px 2px; }
+    .tile .big { font-size: 18px; }
+    .tile .lab { font-size: 8px; }
+    .level-strip { margin: 0; min-height: 16px; font-size: 10px; }
+    .toastwrap { top: calc(var(--hud-space) + 12px); }
+  }
+
+  @media (max-width: 1024px) and (orientation: landscape) {
+    body { padding: 7px; padding-right: 112px; }
+    body.ended { padding-right: 7px; }
+    h1 { margin-bottom: 7px; font-size: 15px; }
+
+    /* Keep the launch card simple, then translate the tutorial into two
+       columns so the real board remains usable on a short landscape phone. */
+    .modal { padding: 8px; overflow: auto; }
+    .start-card { width: min(420px, 100%); padding: 24px; }
+    .start-card h2 { margin: 0 0 8px; font-size: 28px; }
+    .start-actions { margin-top: 16px; }
+    .tutorial-card {
+      width: min(780px, 100%); padding: 16px;
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) 270px;
+      grid-template-areas:
+        "title page"
+        "controls page";
+      column-gap: 18px; align-items: center; align-content: center;
+    }
+    .tutorial-card h2 {
+      grid-area: title; align-self: end;
+      margin: 0 0 8px; font-size: 18px; white-space: nowrap;
+    }
+    .tutorial-pages { grid-area: page; }
+    .tutorial-controls {
+      grid-area: controls; align-self: start; margin: 4px 0 0;
+    }
+    .tutorial-controls button { min-width: 92px; padding: 10px 14px; }
+    .tutorial-card .intro-demo {
+      width: 270px; margin: 0; padding: 6px;
+      align-self: center; justify-self: center;
+    }
+    .tutorial-card .demo-row .demo-die { width: 48px; height: 48px; }
+    .tutorial-card .demo-explanation {
+      margin: 1px 0 9px !important; padding: 8px 12px;
+      font-size: 12px !important; line-height: 1.35 !important;
+    }
+    .tutorial-card .demo-odds { margin: 3px 0 5px; font-size: 13px; }
+    .tutorial-board { --cell: 34px; margin: 0 auto 8px; }
+    .tutorial-copy p {
+      margin-bottom: 5px; font-size: 12px; line-height: 1.35;
+    }
+    .tutorial-feedback { min-height: 17px; margin-top: 2px; font-size: 11px; }
+
+    .hudwrap {
+      position: fixed; top: 7px; right: 7px; bottom: 7px; z-index: 10;
+      width: 98px; justify-content: flex-start;
+    }
+    .hud { width: 100%; flex-direction: column; gap: 5px; margin: 0 0 5px; }
+    .tile { width: 100%; min-width: 0; padding: 3px 5px; }
+    .tile .big { font-size: 17px; }
+    .tile .lab { font-size: 8px; }
+    .level-strip { font-size: 9px; line-height: 1.25; }
+    .toastwrap { right: 112px; }
+    .status { margin-top: 8px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<div class="toastwrap"><div class="toast" id="toast"></div></div>
+
+<div class="modal" id="startModal">
+  <div class="card start-card">
+    <h2>Likely Lines</h2>
+    <div class="intro-high-score" id="introHighScore" hidden></div>
+    <div class="preview-note" id="previewNote" hidden></div>
+    <div class="start-actions">
+      <button class="primary" id="startBtn">PLAY</button>
+      <button class="secondary" id="howToPlayBtn">HOW TO PLAY</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal tutorial-modal" id="tutorialModal" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle" hidden>
+  <div class="card tutorial-card">
+    <h2 id="tutorialTitle">HOW TO PLAY - 1 of 2</h2>
+
+    <div class="tutorial-pages">
+      <div class="tutorial-page" id="tutorialStep1">
+        <div class="intro-demo" aria-label="Example comparing two possible lines">
+          <div class="demo-row" id="demoTop" aria-label="Top line: 2 on a d8, 6 on a d8, and 6 on a d10">
+            <div class="cell demo-die reroll"><div class="value">2</div><div class="sides">d8</div></div>
+            <div class="cell demo-die"><div class="value">6</div><div class="sides">d8</div></div>
+            <div class="cell demo-die"><div class="value">6</div><div class="sides">d10</div></div>
+          </div>
+          <div class="demo-odds" id="demoTopOdds">1 in 8</div>
+          <p class="demo-explanation" id="demoExplanation">The top line already has a matching pair, so fewer dice need rerolling. It's the liklier line.</p>
+
+          <div class="demo-row" id="demoBottom" aria-label="Bottom line: 2 on a d8, 4 on a d8, and 6 on a d10">
+            <div class="cell demo-die reroll"><div class="value">2</div><div class="sides">d8</div></div>
+            <div class="cell demo-die reroll"><div class="value">4</div><div class="sides">d8</div></div>
+            <div class="cell demo-die"><div class="value">6</div><div class="sides">d10</div></div>
+          </div>
+          <div class="demo-odds" id="demoBottomOdds">1 in 64</div>
+        </div>
+      </div>
+
+      <div class="tutorial-page" id="tutorialStep2" hidden>
+        <div class="board tutorial-board" id="tutorialBoard" aria-label="Tutorial dice board"></div>
+        <div class="tutorial-copy">
+          <p>Click the correct arrow to select the likeliest line.</p>
+          <p>You have 15 seconds per round and 3 lives.</p>
+        </div>
+        <div class="tutorial-feedback" id="tutorialFeedback" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="tutorial-controls">
+      <button class="secondary" id="tutorialBackBtn" hidden>BACK</button>
+      <button class="secondary" id="tutorialCloseBtn">CLOSE</button>
+      <button class="primary" id="tutorialNextBtn">NEXT</button>
+    </div>
+  </div>
+</div>
+
+<h1>Likely Lines</h1>
+
+<main id="game" hidden>
+  <div class="hudwrap">
+    <div class="hud">
+      <div class="tile"><div class="big" id="roundNum">1</div><div class="lab">Round</div></div>
+      <div class="tile"><div class="big good" id="pointsNum">0</div><div class="lab">Points</div></div>
+      <div class="tile"><div class="big" id="clock">0:15</div><div class="lab">Time</div></div>
+      <div class="tile"><div class="big hearts" id="lives">♥♥♥</div><div class="lab">Lives</div></div>
+    </div>
+    <div class="level-strip" id="levelStrip"></div>
+  </div>
+
+  <div class="play">
+    <div class="board-stage">
+      <div class="board" id="board" aria-label="Dice board"></div>
+      <div class="pause-overlay" id="pauseOverlay" role="status" hidden>
+        <strong>PAUSED</strong>
+        <span>Press Space to resume</span>
+      </div>
+    </div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <button id="seeScore" hidden>See final score</button>
+  </div>
+</main>
+
+<section class="final" id="final" hidden>
+  <div class="scoreline"><span class="num" id="finalPoints">0</span> <span class="score-unit">points</span></div>
+  <div class="high-score-status" id="highScoreStatus"></div>
+
+  <div class="share" id="share" role="img" aria-label=""></div>
+  <div class="sharebtns">
+    <button id="copyBtn">Copy</button>
+    <button id="shareBtn" hidden>Share</button>
+  </div>
+  <button id="playAgain">Play again</button>
+</section>
+
+<script>
+(() => {
+  'use strict';
+
+  // -----------------------------------------------------------------------
+  // Difficulty data
+  // -----------------------------------------------------------------------
+  // Thirty single-round levels grouped into the six established difficulty
+  // families. Each family supplies four regular rounds followed by a boss.
+  // Level 30 is selected forever once reached because levelForRound() keeps
+  // returning the final plan entry.
+  const LEVEL_FAMILIES = [
+    { id:'foundation', name:'Foundation', size:3, dicePool:[8,10], repeatLimit:Infinity, bestRatio:null },
+    { id:'mixed-pool', name:'Mixed pool', size:3, dicePool:[6,8,10,12], repeatLimit:4, bestRatio:null },
+    { id:'tighter-read', name:'Tighter read', size:3, dicePool:[6,8,10,12], repeatLimit:3, bestRatio:null },
+    { id:'long-lines', name:'Long lines', size:3, dicePool:[6,8,10,12], repeatLimit:4, bestRatio:null },
+    { id:'full-spectrum', name:'Full spectrum', size:3, dicePool:[4,6,8,10,12,20], repeatLimit:4, bestRatio:null },
+    { id:'pressure', name:'Pressure', size:3, dicePool:[4,6,8,10,12,20], repeatLimit:3, bestRatio:null }
+  ];
+
+  function bossMotion(familyIndex) {
+    const everyMs = 2500;
+    if (familyIndex % 3 === 0) return { type:'shift', count:1, everyMs, axis:'either' };
+    if (familyIndex % 3 === 1) return { type:'rotate', count:1, everyMs:1000 };
+    return { type:'teleport', count:1, everyMs };
+  }
+
+  const LEVEL_PLAN = LEVEL_FAMILIES.flatMap((family, familyIndex) =>
+    Array.from({ length:5 }, (_, stepIndex) => {
+      const number = familyIndex * 5 + stepIndex + 1;
+      const boss = stepIndex === 4;
+      return {
+        fromRound: number,
+        roundsAtLevel: number === 30 ? Infinity : 1,
+        id: `${family.id}-${number}${boss ? '-boss' : ''}`,
+        name: boss ? `${family.name} Boss` : `${family.name} ${stepIndex + 1}`,
+        advanceToast: boss ? `BOSS LEVEL ${number} · ${family.name}` : `Level ${number} · ${family.name}`,
+        number,
+        tier: familyIndex + 1,
+        boss,
+        roundMs: 15000,
+        mistakeLifeCost: 1,
+        restoreLifeOnClear: false,
+        pointsMultiplier: 1,
+        size: family.size,
+        dicePool: family.dicePool.slice(),
+        repeatLimit: family.repeatLimit,
+        bestRatio: family.bestRatio,
+        motions: boss ? [bossMotion(familyIndex)] : []
+      };
+    })
+  );
+
+  // Development previews exercise each motion without pretending that its
+  // final place in the ramp has been decided. Examples:
+  //   v6.html?level=12
+  //   v6.html?level=20&mode=shift&y=3
+  //   v6.html?mode=rotate&x=3&y=2
+  //   v6.html?mode=teleport&y=3
+  //   v6.html?mode=all
+  const PREVIEW_MOTIONS = {
+    rotate: [{ type: 'rotate', count: 2, everyMs: 1800 }],
+    shift: [{ type: 'shift', count: 1, everyMs: 3000, axis: 'either' }],
+    teleport: [{ type: 'teleport', count: 1, everyMs: 3200 }],
+    all: [
+      { type: 'rotate', count: 2, everyMs: 1800 },
+      { type: 'shift', count: 1, everyMs: 3400, axis: 'either' },
+      { type: 'teleport', count: 1, everyMs: 4200 }
+    ]
+  };
+
+  const DEFAULT_ROUND_MS = 15000;
+  const STARTING_LIVES = 3;
+  const MAX_LIVES = 3;
+  const LIFE_EVERY_CLEARS = 10;
+  const BASE_POINTS = 15;
+  const SHARE_URL = 'https://jptreen.github.io/best-line/v6.html';
+  const HIGH_SCORE_KEY = 'best-line-v6-high-score';
+  const SUCCESS_HOLD_MS = 950;
+  const WRONG_SWEEP_MS = 710;
+  const TIMEOUT_HOLD_MS = 900;
+  const EPSILON = 1e-12;
+  const CELL_MIN = 30;
+  const CELL_MAX = 68;
+
+  const TIER_BACKGROUNDS = [
+    'oklch(17% 0.015 295)',
+    'oklch(18% 0.035 280)',
+    'oklch(19% 0.050 300)',
+    'oklch(20% 0.065 330)',
+    'oklch(21% 0.080 15)',
+    'oklch(22% 0.095 30)'
+  ];
+
+  const state = {
+    grid: [],
+    lines: [],
+    size: 3,
+    dieSerial: 0,
+    roundToken: 0,
+    roundsCompleted: 0,
+    currentRound: 1,
+    cleared: 0,
+    points: 0,
+    lives: STARTING_LIVES,
+    mistakes: 0,
+    timeouts: 0,
+    roundMistakes: 0,
+    remainingMs: DEFAULT_ROUND_MS,
+    roundStartedAt: null,
+    tickHandle: null,
+    motionHandles: [],
+    motionRuntimes: [],
+    transitionHandle: null,
+    active: false,
+    choiceLocked: false,
+    paused: false,
+    pausedAt: null,
+    over: false,
+    hasStartedRound: false,
+    level: null,
+    outcomes: []
+  };
+
+  const dieElements = new Map();
+  let toastHandle = null;
+  let fallbackHighScore = 0;
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  // Build every die from the same softly rounded polyhedral language used in
+  // the playground. d4 and d6 receive optical size corrections while their
+  // value and type labels retain the common scale.
+  function roundedPolygon(points, rounding) {
+    const pointAt = (from, to, distance) => {
+      const length = Math.hypot(to[0] - from[0], to[1] - from[1]);
+      const amount = Math.min(distance, length / 2) / length;
+      return [
+        from[0] + (to[0] - from[0]) * amount,
+        from[1] + (to[1] - from[1]) * amount
+      ];
+    };
+    const number = value => Number(value.toFixed(2));
+
+    return points.map((point, index) => {
+      const previous = points[(index - 1 + points.length) % points.length];
+      const next = points[(index + 1) % points.length];
+      const entry = pointAt(point, previous, rounding);
+      const exit = pointAt(point, next, rounding);
+      return `${index ? 'L' : 'M'}${number(entry[0])},${number(entry[1])} ` +
+        `Q${point[0]},${point[1]} ${number(exit[0])},${number(exit[1])}`;
+    }).join(' ') + ' Z';
+  }
+
+  const DIE_FACE_PATHS = {
+    4: roundedPolygon([[50, 7.7], [93.24, 88.54], [6.76, 88.54]], 2.35),
+    6: roundedPolygon([[13.02, 13.02], [86.98, 13.02], [86.98, 86.98], [13.02, 86.98]], 6.02),
+    8: roundedPolygon([[50, 3], [95, 50], [50, 97], [5, 50]], 2.8),
+    10: roundedPolygon([[50, 4], [85, 35], [88, 64], [50, 96], [12, 64], [15, 35]], 2.6),
+    12: roundedPolygon([[50, 4], [78, 13], [95, 36], [95, 64], [78, 87], [50, 96], [22, 87], [5, 64], [5, 36], [22, 13]], 2.9),
+    20: roundedPolygon([[50, 3], [91, 27], [91, 73], [50, 97], [9, 73], [9, 27]], 2.8)
+  };
+
+  const DIE_FACETS = {
+    4: `
+      <polygon class="facet-fill" points="50,7.7 50,57.52 6.76,88.54"/>
+      <path class="facet-line" d="M50 7.7 L50 57.52 L6.76 88.54 M50 57.52 L93.24 88.54"/>`,
+    6: '',
+    8: `
+      <polygon class="facet-fill" points="50,3 50,50 5,50"/>
+      <path class="facet-line" d="M50 3 L50 97 M5 50 L50 50 L95 50"/>`,
+    10: `
+      <path class="facet-fill" d="M50 4 L28 63 L50 79 L72 63 Z"/>
+      <path class="facet-line" d="M50 4 L28 63 L50 79 L72 63 Z M28 63 L12 64 M50 79 L50 96 M72 63 L88 64"/>`,
+    12: `
+      <path class="facet-fill" d="${roundedPolygon([[50, 18], [78, 39], [67, 73], [33, 73], [22, 39]], 1.3)}"/>
+      <path class="facet-line" d="M50 18 L78 39 L67 73 L33 73 L22 39 Z M50 18 L50 4 M78 39 L95 36 M67 73 L78 87 M33 73 L22 87 M22 39 L5 36"/>`,
+    20: `
+      <polygon class="facet-fill" points="50,3 50,49 9,27"/>
+      <path class="facet-line" d="M50 3 L50 49 L9 27 M50 49 L91 27 M9 73 L50 49 L91 73 M50 49 L50 97 M9 27 L9 73 M91 27 L91 73"/>`
+  };
+
+  let dieRenderSerial = 0;
+
+  function dieFaceMarkup(sides, value = '') {
+    const path = DIE_FACE_PATHS[sides];
+    if (!path) return '';
+    const clipId = `die-face-clip-${sides}-${++dieRenderSerial}`;
+    return `
+      <div class="die-visual" data-sides="${sides}">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <defs><clipPath id="${clipId}"><path d="${path}"/></clipPath></defs>
+          <g class="die-geometry">
+            <path class="face" d="${path}"/>
+            <g clip-path="url(#${clipId})">${DIE_FACETS[sides]}</g>
+          </g>
+          <text class="value" x="50" y="58.8">${value}</text>
+          <text class="sides" x="50" y="74.8">d${sides}</text>
+        </svg>
+      </div>`;
+  }
+
+  function hydrateStaticDice() {
+    document.querySelectorAll('.demo-die').forEach(cell => {
+      const value = cell.querySelector('.value')?.textContent.trim() || '';
+      const label = cell.querySelector('.sides')?.textContent || '';
+      const sides = Number.parseInt(label.replace(/\D/g, ''), 10);
+      cell.innerHTML = dieFaceMarkup(sides, value);
+      cell.setAttribute('aria-label', `d${sides} showing ${value}`);
+    });
+  }
+
+  function previewOverride() {
+    const params = new URLSearchParams(location.search);
+    const mode = params.get('mode');
+    if (!mode || !PREVIEW_MOTIONS[mode]) return null;
+
+    const motions = PREVIEW_MOTIONS[mode].map(m => ({ ...m }));
+    const count = Number.parseInt(params.get('x'), 10);
+    const seconds = Number.parseFloat(params.get('y'));
+    if (Number.isFinite(count)) {
+      // x belongs to the rotating-dice rule. Teleport remains a single-die
+      // swap and a shift remains a single lane unless a future level says
+      // otherwise explicitly in LEVEL_PLAN.
+      motions.forEach(m => {
+        if (m.type === 'rotate') m.count = clamp(count, 1, 8);
+      });
+    }
+    if (Number.isFinite(seconds)) {
+      motions.forEach(m => { m.everyMs = clamp(seconds, .35, 30) * 1000; });
+    }
+    return { mode, motions };
+  }
+
+  const preview = previewOverride();
+
+  function debugLevelOverride() {
+    const requested = Number.parseInt(new URLSearchParams(location.search).get('level'), 10);
+    if (!Number.isFinite(requested)) return null;
+    const number = clamp(requested, 1, LEVEL_PLAN.length);
+    return LEVEL_PLAN.find(level => level.number === number) || null;
+  }
+
+  const DEBUG_LEVEL = debugLevelOverride();
+  const DEBUG_START_ROUND = DEBUG_LEVEL ? DEBUG_LEVEL.fromRound : 1;
+
+  function levelForRound(round) {
+    let selected = LEVEL_PLAN[0];
+    LEVEL_PLAN.forEach(level => {
+      if (round >= level.fromRound) selected = level;
+    });
+    const copy = {
+      ...selected,
+      dicePool: selected.dicePool.slice(),
+      motions: selected.motions.map(m => ({ ...m }))
+    };
+    if (preview) {
+      copy.id += '-' + preview.mode + '-preview';
+      copy.name += ' · ' + preview.mode[0].toUpperCase() + preview.mode.slice(1) + ' preview';
+      copy.motions = preview.motions.map(m => ({ ...m }));
+    }
+    return copy;
+  }
+
+  function roundDurationMs() {
+    return Number.isFinite(state.level?.roundMs) ? state.level.roundMs : DEFAULT_ROUND_MS;
+  }
+
+  function hasMotion(level) {
+    return level.motions.length > 0;
+  }
+
+  function buildLines(n) {
+    const idx = Array.from({ length: n }, (_, i) => i);
+    const lines = [];
+    for (let r = 0; r < n; r++) {
+      lines.push({ key: 'R' + (r + 1), label: 'row ' + (r + 1), cells: idx.map(c => [r, c]) });
+    }
+    for (let c = 0; c < n; c++) {
+      lines.push({ key: 'C' + (c + 1), label: 'column ' + (c + 1), cells: idx.map(r => [r, c]) });
+    }
+    lines.push({ key: 'D↘', label: 'descending diagonal', cells: idx.map(i => [i, i]) });
+    lines.push({ key: 'D↙', label: 'ascending diagonal', cells: idx.map(i => [i, n - 1 - i]) });
+    return lines;
+  }
+
+  function roll(sides) {
+    return 1 + Math.floor(Math.random() * sides);
+  }
+
+  function newDie(sides) {
+    return { id: ++state.dieSerial, sides, value: roll(sides) };
+  }
+
+  function lineProbability(line) {
+    let best = 0;
+    const maxTarget = Math.max(...state.level.dicePool);
+    for (let target = 1; target <= maxTarget; target++) {
+      let p = 1;
+      for (const [r, c] of line.cells) {
+        const die = state.grid[r][c];
+        if (die.sides < target) { p = 0; break; }
+        if (die.value !== target) p /= die.sides;
+      }
+      if (p > best) best = p;
+    }
+    return best;
+  }
+
+  function scoreLines() {
+    return state.lines.map(line => ({ line, p: lineProbability(line) }));
+  }
+
+  function hasUniqueBest() {
+    const values = scoreLines().map(s => s.p);
+    const best = Math.max(...values);
+    return values.filter(p => p >= best - EPSILON).length === 1;
+  }
+
+  // Repeat filtering is intentionally suspended whenever a movement rule is
+  // active. A legal moving board may create or remove repeated-number lines
+  // after it has been dealt, so enforcing the static rule would be misleading.
+  function obeysRepeatLimit() {
+    if (hasMotion(state.level)) return true;
+    const limit = state.level.repeatLimit;
+    if (!Number.isFinite(limit)) return true;
+    for (const line of state.lines) {
+      const counts = {};
+      for (const [r, c] of line.cells) {
+        const value = state.grid[r][c].value;
+        counts[value] = (counts[value] || 0) + 1;
+        if (counts[value] >= limit) return false;
+      }
+    }
+    return true;
+  }
+
+  // Optional ratio bands give the future difficulty schedule a more reliable
+  // control than dice pool alone. ratio = best line / runner-up line.
+  function obeysBestRatio() {
+    const band = state.level.bestRatio;
+    if (!band) return true;
+    const values = scoreLines().map(s => s.p).sort((a, b) => b - a);
+    const ratio = values[1] === 0 ? Infinity : values[0] / values[1];
+    if (Number.isFinite(band.min) && ratio < band.min) return false;
+    if (Number.isFinite(band.max) && ratio > band.max) return false;
+    return true;
+  }
+
+  function dealBoard() {
+    state.size = state.level.size;
+    state.lines = buildLines(state.size);
+    const pool = state.level.dicePool;
+    for (let attempt = 0; attempt < 600; attempt++) {
+      state.grid = Array.from({ length: state.size }, () =>
+        Array.from({ length: state.size }, () => {
+          const sides = pool[Math.floor(Math.random() * pool.length)];
+          return newDie(sides);
+        })
+      );
+      if (obeysRepeatLimit() && hasUniqueBest() && obeysBestRatio()) return;
+    }
+    // Never hang the arcade loop because an ambitious future filter is too
+    // restrictive. The last legal-sized board is still playable; ties count.
+  }
+
+  function positionElement(el, r, c) {
+    el.style.gridRow = String(r + 1);
+    el.style.gridColumn = String(c + 1);
+  }
+
+  function makePick(key, label, ariaLabel) {
+    const button = document.createElement('button');
+    button.className = 'pick';
+    button.type = 'button';
+    button.textContent = label;
+    button.dataset.key = key;
+    button.setAttribute('aria-label', ariaLabel);
+    button.addEventListener('click', () => choose(key));
+    return button;
+  }
+
+  const TUTORIAL_GRID = [
+    [{ value: 1, sides: 8 }, { value: 2, sides: 10 }, { value: 3, sides: 8 }],
+    [{ value: 6, sides: 8 }, { value: 6, sides: 10 }, { value: 7, sides: 8 }],
+    [{ value: 2, sides: 8 }, { value: 3, sides: 10 }, { value: 4, sides: 8 }]
+  ];
+  const TUTORIAL_CORRECT_KEY = 'R2';
+
+  function makeTutorialPick(key, label, ariaLabel) {
+    const button = document.createElement('button');
+    button.className = 'pick';
+    button.type = 'button';
+    button.textContent = label;
+    button.dataset.key = key;
+    button.setAttribute('aria-label', ariaLabel);
+    button.addEventListener('click', () => chooseTutorial(key));
+    return button;
+  }
+
+  function drawTutorialBoard() {
+    const board = document.getElementById('tutorialBoard');
+    const size = TUTORIAL_GRID.length;
+    board.innerHTML = '';
+    board.style.setProperty('--n', size);
+
+    const cornerA = makeTutorialPick('D↘', '↘', 'Choose descending diagonal');
+    const cornerB = makeTutorialPick('D↙', '↙', 'Choose ascending diagonal');
+    positionElement(cornerA, 0, 0);
+    positionElement(cornerB, 0, size + 1);
+    board.append(cornerA, cornerB);
+
+    for (let c = 0; c < size; c++) {
+      const button = makeTutorialPick('C' + (c + 1), '↓', 'Choose column ' + (c + 1));
+      positionElement(button, 0, c + 1);
+      board.appendChild(button);
+    }
+    for (let r = 0; r < size; r++) {
+      const button = makeTutorialPick('R' + (r + 1), '→', 'Choose row ' + (r + 1));
+      positionElement(button, r + 1, 0);
+      board.appendChild(button);
+    }
+
+    TUTORIAL_GRID.forEach((row, r) => row.forEach((die, c) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.pos = r + ',' + c;
+      cell.innerHTML = dieFaceMarkup(die.sides, die.value);
+      cell.setAttribute('aria-label', `d${die.sides} showing ${die.value}`);
+      positionElement(cell, r + 1, c + 1);
+      board.appendChild(cell);
+    }));
+  }
+
+  function clearTutorialChoice() {
+    const board = document.getElementById('tutorialBoard');
+    board.querySelectorAll('.wrong-mark, .answer-mark').forEach(cell => {
+      cell.classList.remove('wrong-mark', 'answer-mark');
+    });
+    board.querySelectorAll('.wrong-pick, .answer-pick').forEach(button => {
+      button.classList.remove('wrong-pick', 'answer-pick');
+    });
+    const feedback = document.getElementById('tutorialFeedback');
+    feedback.textContent = '';
+    feedback.className = 'tutorial-feedback';
+  }
+
+  function chooseTutorial(key) {
+    clearTutorialChoice();
+    const board = document.getElementById('tutorialBoard');
+    const line = buildLines(TUTORIAL_GRID.length).find(item => item.key === key);
+    const correct = key === TUTORIAL_CORRECT_KEY;
+    const markClass = correct ? 'answer-mark' : 'wrong-mark';
+    const pickClass = correct ? 'answer-pick' : 'wrong-pick';
+    line.cells.forEach(([r, c]) => {
+      const cell = board.querySelector('[data-pos="' + r + ',' + c + '"]');
+      if (cell) cell.classList.add(markClass);
+    });
+    const button = board.querySelector('button.pick[data-key="' + key + '"]');
+    if (button) button.classList.add(pickClass);
+    const feedback = document.getElementById('tutorialFeedback');
+    feedback.textContent = correct ? 'Correct — the second row is likeliest.' : 'Try another line.';
+    feedback.classList.add(correct ? 'right' : 'wrong');
+  }
+
+  function showTutorialStep(step) {
+    const first = step === 1;
+    document.getElementById('tutorialTitle').textContent =
+      'HOW TO PLAY - ' + step + ' of 2';
+    document.getElementById('tutorialStep1').hidden = !first;
+    document.getElementById('tutorialStep2').hidden = first;
+    document.getElementById('tutorialBackBtn').hidden = first;
+    document.getElementById('tutorialNextBtn').hidden = !first;
+    if (!first) clearTutorialChoice();
+  }
+
+  function openTutorial() {
+    document.getElementById('startModal').hidden = true;
+    document.getElementById('tutorialModal').hidden = false;
+    showTutorialStep(1);
+    document.getElementById('tutorialCloseBtn').focus();
+  }
+
+  function closeTutorial() {
+    document.getElementById('tutorialModal').hidden = true;
+    document.getElementById('startModal').hidden = false;
+    document.getElementById('howToPlayBtn').focus();
+  }
+
+  function drawFreshBoard() {
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+    board.style.setProperty('--n', state.size);
+    dieElements.clear();
+
+    const cornerA = makePick('D↘', '↘', 'Choose descending diagonal');
+    const cornerB = makePick('D↙', '↙', 'Choose ascending diagonal');
+    positionElement(cornerA, 0, 0);
+    positionElement(cornerB, 0, state.size + 1);
+    board.append(cornerA, cornerB);
+
+    for (let c = 0; c < state.size; c++) {
+      const button = makePick('C' + (c + 1), '↓', 'Choose column ' + (c + 1));
+      positionElement(button, 0, c + 1);
+      board.appendChild(button);
+    }
+    for (let r = 0; r < state.size; r++) {
+      const button = makePick('R' + (r + 1), '→', 'Choose row ' + (r + 1));
+      positionElement(button, r + 1, 0);
+      board.appendChild(button);
+    }
+
+    for (let r = 0; r < state.size; r++) {
+      for (let c = 0; c < state.size; c++) {
+        const die = state.grid[r][c];
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.dieId = String(die.id);
+        cell.innerHTML = dieFaceMarkup(die.sides, die.value);
+        cell.setAttribute('aria-label', `d${die.sides} showing ${die.value}`);
+        positionElement(cell, r + 1, c + 1);
+        board.appendChild(cell);
+        dieElements.set(die.id, cell);
+      }
+    }
+    refreshDieElements();
+    fitBoard();
+  }
+
+  function findDie(id) {
+    for (let r = 0; r < state.size; r++) {
+      for (let c = 0; c < state.size; c++) {
+        if (state.grid[r][c].id === id) return { die: state.grid[r][c], r, c };
+      }
+    }
+    return null;
+  }
+
+  function runtimeClassesFor(dieId, r, c) {
+    const classes = [];
+    state.motionRuntimes.forEach(runtime => {
+      if (runtime.type === 'rotate' && runtime.ids.includes(dieId)) classes.push('rotating');
+      if (runtime.type === 'teleport' && runtime.ids.includes(dieId)) classes.push('teleporter');
+      if (runtime.type === 'shift') {
+        const onLane = runtime.axis === 'row' ? r === runtime.index : c === runtime.index;
+        if (onLane) classes.push('shift-lane');
+      }
+    });
+    return classes;
+  }
+
+  function refreshDieElements(changedValueIds = []) {
+    const changed = new Set(changedValueIds);
+    for (let r = 0; r < state.size; r++) {
+      for (let c = 0; c < state.size; c++) {
+        const die = state.grid[r][c];
+        const el = dieElements.get(die.id);
+        if (!el) continue;
+        positionElement(el, r + 1, c + 1);
+        el.dataset.pos = r + ',' + c;
+        el.querySelector('.value').textContent = die.value;
+        el.querySelector('.sides').textContent = 'd' + die.sides;
+        el.setAttribute('aria-label', `d${die.sides} showing ${die.value}`);
+        el.classList.remove('rotating', 'shift-lane', 'teleporter');
+        runtimeClassesFor(die.id, r, c).forEach(name => el.classList.add(name));
+        if (changed.has(die.id)) {
+          el.classList.remove('value-tick');
+          void el.offsetWidth;
+          el.classList.add('value-tick');
+        }
+      }
+    }
+  }
+
+  function animatePositionMutation(mutator, highlightedIds = [], animatedIds = null) {
+    const before = new Map();
+    dieElements.forEach((el, id) => before.set(id, el.getBoundingClientRect()));
+    mutator();
+    refreshDieElements();
+    const highlighted = new Set(highlightedIds);
+    const animated = animatedIds ? new Set(animatedIds) : null;
+    dieElements.forEach((el, id) => {
+      const oldRect = before.get(id);
+      const newRect = el.getBoundingClientRect();
+      if (!oldRect) return;
+      const dx = oldRect.left - newRect.left;
+      const dy = oldRect.top - newRect.top;
+      if ((Math.abs(dx) > .5 || Math.abs(dy) > .5) && (!animated || animated.has(id))) {
+        el.animate(
+          [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }],
+          { duration: 360, easing: 'cubic-bezier(.2,.8,.2,1)' }
+        );
+      }
+      if (highlighted.has(id)) {
+        el.classList.remove('moved');
+        void el.offsetWidth;
+        el.classList.add('moved');
+      }
+    });
+  }
+
+  function randomDistinctDieIds(count) {
+    const ids = state.grid.flat().map(die => die.id);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    return ids.slice(0, clamp(count, 1, ids.length));
+  }
+
+  function prepareMotion(config) {
+    if (config.type === 'rotate') {
+      const ids = randomDistinctDieIds(config.count || 1);
+      const directions = new Map();
+      ids.forEach(id => {
+        const found = findDie(id);
+        let direction = Math.random() < .5 ? -1 : 1;
+        if (found.die.value === 1) direction = 1;
+        if (found.die.value === found.die.sides) direction = -1;
+        directions.set(id, direction);
+      });
+      return { ...config, ids, directions };
+    }
+
+    if (config.type === 'shift') {
+      const axis = config.axis === 'row' || config.axis === 'column'
+        ? config.axis
+        : (Math.random() < .5 ? 'row' : 'column');
+      return {
+        ...config,
+        axis,
+        index: Math.floor(Math.random() * state.size),
+        direction: Math.random() < .5 ? -1 : 1,
+        ids: []
+      };
+    }
+
+    if (config.type === 'teleport') {
+      return {
+        ...config,
+        ids: randomDistinctDieIds(config.count || 1),
+        previousCells: new Map()
+      };
+    }
+    return null;
+  }
+
+  function tickRotate(runtime) {
+    const changed = [];
+    runtime.ids.forEach(id => {
+      const found = findDie(id);
+      if (!found) return;
+      let direction = runtime.directions.get(id) || 1;
+      let next = found.die.value + direction;
+      if (next >= found.die.sides) {
+        next = found.die.sides;
+        direction = -1;
+      } else if (next <= 1) {
+        next = 1;
+        direction = 1;
+      }
+      found.die.value = next;
+      runtime.directions.set(id, direction);
+      changed.push(id);
+    });
+    refreshDieElements(changed);
+  }
+
+  function tickShift(runtime) {
+    const movedIds = runtime.axis === 'row'
+      ? state.grid[runtime.index].map(die => die.id)
+      : state.grid.map(row => row[runtime.index].id);
+    animatePositionMutation(() => {
+      if (runtime.axis === 'row') {
+        const row = state.grid[runtime.index];
+        if (runtime.direction > 0) row.unshift(row.pop());
+        else row.push(row.shift());
+      } else {
+        const column = state.grid.map(row => row[runtime.index]);
+        if (runtime.direction > 0) column.unshift(column.pop());
+        else column.push(column.shift());
+        column.forEach((die, r) => { state.grid[r][runtime.index] = die; });
+      }
+    }, movedIds);
+  }
+
+  function tickTeleport(runtime) {
+    runtime.ids.forEach(id => {
+      const source = findDie(id);
+      if (!source) return;
+      const previousCell = runtime.previousCells.get(id);
+      const destinations = [];
+      for (let r = 0; r < state.size; r++) {
+        for (let c = 0; c < state.size; c++) {
+          const key = r + ',' + c;
+          if ((r !== source.r || c !== source.c) && key !== previousCell) {
+            destinations.push({ r, c });
+          }
+        }
+      }
+      // A 1-cell board cannot move. On any playable board this list excludes
+      // both the current position and the cell just vacated, preventing a
+      // two-die ping-pong while still allowing later revisits.
+      if (!destinations.length) return;
+      const target = destinations[Math.floor(Math.random() * destinations.length)];
+      const targetR = target.r;
+      const targetC = target.c;
+      runtime.previousCells.set(id, source.r + ',' + source.c);
+      animatePositionMutation(() => {
+        const temp = state.grid[targetR][targetC];
+        state.grid[targetR][targetC] = state.grid[source.r][source.c];
+        state.grid[source.r][source.c] = temp;
+      }, [id], [id]);
+    });
+  }
+
+  function tickMotion(runtime, token) {
+    if (!state.active || state.paused || state.roundToken !== token) return;
+    // A moving board invalidates every previous rejection: the best line may
+    // have changed, and even a formerly wrong line may now be right.
+    clearWrongMarks();
+    if (runtime.type === 'rotate') tickRotate(runtime);
+    if (runtime.type === 'shift') tickShift(runtime);
+    if (runtime.type === 'teleport') tickTeleport(runtime);
+  }
+
+  function startMotions(token) {
+    state.motionRuntimes = state.level.motions.map(prepareMotion).filter(Boolean);
+    refreshDieElements();
+    state.motionRuntimes.forEach(runtime => {
+      const handle = setInterval(
+        () => tickMotion(runtime, token),
+        Math.max(250, runtime.everyMs || 3000)
+      );
+      state.motionHandles.push(handle);
+    });
+  }
+
+  function stopMotions() {
+    state.motionHandles.forEach(clearInterval);
+    state.motionHandles = [];
+    state.motionRuntimes = [];
+  }
+
+  function fmtClock(ms) {
+    const seconds = Math.max(0, Math.ceil(ms / 1000));
+    return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+  }
+
+  function remainingWholeSeconds() {
+    return Math.max(0, Math.ceil(state.remainingMs / 1000));
+  }
+
+  function syncRemaining() {
+    if (state.roundStartedAt === null || state.paused) return;
+    state.remainingMs = Math.max(0, roundDurationMs() - (performance.now() - state.roundStartedAt));
+  }
+
+  function updateHud() {
+    document.getElementById('roundNum').textContent = state.currentRound;
+    document.getElementById('pointsNum').textContent = state.points.toLocaleString();
+
+    const clock = document.getElementById('clock');
+    clock.textContent = fmtClock(state.remainingMs);
+    clock.classList.toggle('bad', state.remainingMs <= 5000);
+    clock.classList.toggle('warn', state.remainingMs > 5000 && state.remainingMs <= 10000);
+
+    const hearts = '♥'.repeat(state.lives) + '♡'.repeat(MAX_LIVES - state.lives);
+    document.getElementById('lives').textContent = hearts;
+    document.getElementById('levelStrip').innerHTML =
+      '<b>Level ' + state.level.number + '</b> · ' + state.level.name +
+      ' · points ×' + state.level.pointsMultiplier +
+      (state.level.boss ? ' · <span class="boss-tag">BOSS</span>' : '') +
+      (DEBUG_LEVEL ? ' · <span class="debug-tag">DEBUG START</span>' : '');
+    document.body.classList.toggle('boss-round', Boolean(state.level.boss));
+    document.documentElement.style.setProperty(
+      '--bg',
+      TIER_BACKGROUNDS[clamp((state.level.tier || state.level.number) - 1, 0, TIER_BACKGROUNDS.length - 1)]
+    );
+  }
+
+  function setPickDisabled(disabled) {
+    document.querySelectorAll('#board button.pick').forEach(button => { button.disabled = disabled; });
+  }
+
+  function tickClock(token) {
+    if (!state.active || state.paused || state.roundToken !== token) return;
+    syncRemaining();
+    updateHud();
+    if (state.remainingMs <= 0) handleTimeout();
+  }
+
+  function stopRoundEngine() {
+    clearInterval(state.tickHandle);
+    state.tickHandle = null;
+    stopMotions();
+  }
+
+  function clearPauseState() {
+    state.paused = false;
+    state.pausedAt = null;
+    document.body.classList.remove('game-paused');
+    document.getElementById('pauseOverlay').hidden = true;
+    document.getElementById('board').setAttribute('aria-hidden', 'false');
+  }
+
+  function pauseGame() {
+    if (!state.active || state.choiceLocked || state.over || state.paused) return;
+    syncRemaining();
+    state.paused = true;
+    state.pausedAt = performance.now();
+    updateHud();
+    setPickDisabled(true);
+    document.body.classList.add('game-paused');
+    document.getElementById('pauseOverlay').hidden = false;
+    document.getElementById('board').setAttribute('aria-hidden', 'true');
+  }
+
+  function resumeGame() {
+    if (!state.paused) return;
+    const pausedFor = performance.now() - state.pausedAt;
+    if (state.roundStartedAt !== null) state.roundStartedAt += pausedFor;
+    clearPauseState();
+    updateHud();
+    if (state.active && !state.choiceLocked) setPickDisabled(false);
+  }
+
+  function togglePause() {
+    if (state.paused) resumeGame();
+    else pauseGame();
+  }
+
+  function showStatus(message, kind = '') {
+    const status = document.getElementById('status');
+    status.textContent = message;
+    status.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function toast(message) {
+    const el = document.getElementById('toast');
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(toastHandle);
+    toastHandle = setTimeout(() => el.classList.remove('show'), 1800);
+  }
+
+  function sweepCorrectLine(key) {
+    const line = state.lines.find(item => item.key === key);
+    if (!line) return;
+    line.cells.forEach(([r, c], index) => {
+      const el = dieElements.get(state.grid[r][c].id);
+      if (!el) return;
+      const geometry = el.querySelector('.die-geometry');
+      const label = el.querySelector('.sides');
+      el.style.setProperty('--line-delay', `${index * 95}ms`);
+      el.style.setProperty('--success-body-start', getComputedStyle(geometry).opacity);
+      el.style.setProperty('--success-label-start', getComputedStyle(label).opacity);
+      el.classList.add('answer-sweep');
+    });
+  }
+
+  function markWrongLine(key) {
+    const line = state.lines.find(item => item.key === key);
+    if (!line) return;
+    line.cells.forEach(([r, c], index) => {
+      const el = dieElements.get(state.grid[r][c].id);
+      if (!el) return;
+      el.classList.remove('wrong-sweep');
+      el.style.setProperty('--line-delay', `${index * 95}ms`);
+      void el.offsetWidth;
+      el.classList.add('wrong-mark', 'wrong-sweep');
+    });
+    const button = document.querySelector('#board button.pick[data-key="' + key + '"]');
+    if (button) button.classList.add('wrong-pick');
+  }
+
+  function clearWrongMarks() {
+    document.querySelectorAll('#board .wrong-mark').forEach(el => {
+      el.classList.remove('wrong-mark', 'wrong-sweep');
+      el.style.removeProperty('--line-delay');
+    });
+    document.querySelectorAll('#board .wrong-pick').forEach(el => el.classList.remove('wrong-pick'));
+  }
+
+  function revealCorrectAnswer() {
+    const scored = scoreLines();
+    const best = Math.max(...scored.map(item => item.p));
+    const bestItems = scored.filter(item => item.p >= best - EPSILON);
+    bestItems.forEach(item => {
+      item.line.cells.forEach(([r, c]) => {
+        const el = dieElements.get(state.grid[r][c].id);
+        if (el) el.classList.add('answer-mark');
+      });
+      const button = document.querySelector('#board button.pick[data-key="' + item.line.key + '"]');
+      if (button) button.classList.add('answer-pick');
+    });
+    return bestItems.map(item => item.line.key);
+  }
+
+  function loseLife(reason) {
+    const lifeCost = clamp(Number(state.level?.mistakeLifeCost) || 1, 1, MAX_LIVES);
+    state.lives = Math.max(0, state.lives - lifeCost);
+    state.mistakes++;
+    updateHud();
+    if (state.lives === 0) {
+      state.active = false;
+      stopRoundEngine();
+      setPickDisabled(true);
+      showStatus(reason + ' — no lives left.', 'wrong');
+      clearTimeout(state.transitionHandle);
+      state.transitionHandle = setTimeout(endGame, reason === 'Incorrect' ? WRONG_SWEEP_MS : 420);
+      return true;
+    }
+    return false;
+  }
+
+  function handleWrong(key) {
+    state.roundMistakes++;
+    state.choiceLocked = true;
+    setPickDisabled(true);
+    markWrongLine(key);
+
+    if (loseLife('Incorrect')) return;
+    showStatus('Incorrect — try again.', 'wrong');
+    clearTimeout(state.transitionHandle);
+    state.transitionHandle = setTimeout(() => {
+      if (!state.active) return;
+      state.choiceLocked = false;
+      setPickDisabled(false);
+      showStatus('');
+    }, WRONG_SWEEP_MS);
+  }
+
+  function handleCorrect(key) {
+    syncRemaining();
+    state.active = false;
+    state.choiceLocked = true;
+    stopRoundEngine();
+    setPickDisabled(true);
+    const board = document.getElementById('board');
+    sweepCorrectLine(key);
+    board.classList.add('success-hold');
+    const selectedPick = board.querySelector('button.pick[data-key="' + key + '"]');
+    if (selectedPick) selectedPick.classList.add('answer-pick');
+
+    const secondsLeft = remainingWholeSeconds();
+    const earned = BASE_POINTS + Math.round(secondsLeft * state.level.pointsMultiplier);
+    state.points += earned;
+    state.cleared++;
+    state.roundsCompleted++;
+    state.outcomes.push(state.roundMistakes ? '🟨' : '🟩');
+
+    let lifeMessage = '';
+    if ((state.level.restoreLifeOnClear || state.cleared % LIFE_EVERY_CLEARS === 0) && state.lives < MAX_LIVES) {
+      state.lives++;
+      lifeMessage = ' · life restored';
+    }
+    updateHud();
+    showStatus('Correct · +' + earned.toLocaleString() + ' points' + lifeMessage, 'right');
+    if (lifeMessage) toast(state.level.restoreLifeOnClear ? 'Level cleared — life restored.' : 'Ten boards cleared — life restored.');
+
+    clearTimeout(state.transitionHandle);
+    state.transitionHandle = setTimeout(startRound, SUCCESS_HOLD_MS);
+  }
+
+  function choose(key) {
+    if (!state.active || state.paused || state.choiceLocked || state.over) return;
+    syncRemaining();
+    if (state.remainingMs <= 0) { handleTimeout(); return; }
+
+    const scored = scoreLines();
+    const best = Math.max(...scored.map(item => item.p));
+    const picked = scored.find(item => item.line.key === key);
+    if (!picked) return;
+    const correct = picked.p >= best - EPSILON;
+    if (correct) handleCorrect(key);
+    else handleWrong(key);
+  }
+
+  function handleTimeout() {
+    if (!state.active || state.paused || state.over) return;
+    state.remainingMs = 0;
+    state.active = false;
+    state.choiceLocked = true;
+    stopRoundEngine();
+    setPickDisabled(true);
+    state.timeouts++;
+    state.roundsCompleted++;
+    state.outcomes.push('🟥');
+    if (loseLife('Time up')) return;
+    showStatus('Time up — life lost. Loading the next board…', 'wrong');
+    clearTimeout(state.transitionHandle);
+    state.transitionHandle = setTimeout(startRound, TIMEOUT_HOLD_MS);
+  }
+
+  function startRound() {
+    if (state.over || state.lives <= 0) return;
+    clearTimeout(state.transitionHandle);
+    stopRoundEngine();
+    clearPauseState();
+    state.roundToken++;
+    const token = state.roundToken;
+    const previousLevel = state.level;
+    const firstRound = !state.hasStartedRound;
+    state.currentRound = state.roundsCompleted + 1;
+    state.level = levelForRound(state.currentRound);
+    const advanced = previousLevel && previousLevel.id !== state.level.id;
+    state.roundMistakes = 0;
+    state.remainingMs = roundDurationMs();
+    state.roundStartedAt = null;
+    state.choiceLocked = false;
+    state.active = false;
+
+    const board = document.getElementById('board');
+    board.classList.remove('round-reveal', 'success-hold');
+    dealBoard();
+    drawFreshBoard();
+    void board.offsetWidth;
+    board.classList.add('round-reveal');
+    document.getElementById('seeScore').hidden = true;
+    showStatus('');
+    updateHud();
+    if ((advanced || (firstRound && state.level.boss)) && state.level.advanceToast) {
+      toast(state.level.advanceToast);
+    }
+
+    state.roundStartedAt = performance.now();
+    state.hasStartedRound = true;
+    state.active = true;
+    state.tickHandle = setInterval(() => tickClock(token), 100);
+    startMotions(token);
+    setPickDisabled(false);
+  }
+
+  function shareParts() {
+    return {
+      head: 'Likely Lines — ' + state.points.toLocaleString() + ' pts',
+      url: SHARE_URL
+    };
+  }
+
+  function shareText() {
+    const p = shareParts();
+    return [p.head, p.url].join('\n');
+  }
+
+  function renderShare() {
+    const p = shareParts();
+    const el = document.getElementById('share');
+    el.innerHTML = '<div class="share-score">' + p.head + '</div>' +
+      '<div class="link">' + p.url + '</div>';
+    el.setAttribute('aria-label', p.head + '. ' + p.url);
+    document.getElementById('shareBtn').hidden = !navigator.share;
+    document.getElementById('copyBtn').textContent = 'Copy';
+  }
+
+  function readHighScore() {
+    try {
+      const saved = Number.parseInt(localStorage.getItem(HIGH_SCORE_KEY), 10);
+      if (Number.isFinite(saved) && saved >= 0) fallbackHighScore = Math.max(fallbackHighScore, saved);
+    } catch (error) {
+      // Storage may be unavailable for local files or privacy-restricted tabs.
+    }
+    return fallbackHighScore;
+  }
+
+  function recordHighScore(score) {
+    const previous = readHighScore();
+    const isNew = score > previous;
+    const highScore = Math.max(previous, score);
+    fallbackHighScore = highScore;
+    if (isNew) {
+      try { localStorage.setItem(HIGH_SCORE_KEY, String(highScore)); }
+      catch (error) { /* The in-memory record still works for this page. */ }
+    }
+    return { isNew, highScore };
+  }
+
+  function endGame() {
+    if (document.getElementById('final').hidden === false) return;
+    state.over = true;
+    state.active = false;
+    stopRoundEngine();
+    clearTimeout(state.transitionHandle);
+    clearPauseState();
+    document.getElementById('toast').classList.remove('show');
+    document.getElementById('game').hidden = true;
+    document.getElementById('final').hidden = false;
+    document.body.classList.add('ended');
+    document.getElementById('finalPoints').textContent = state.points.toLocaleString();
+    const record = recordHighScore(state.points);
+    const highScoreStatus = document.getElementById('highScoreStatus');
+    highScoreStatus.textContent = record.isNew
+      ? 'NEW HIGH SCORE!'
+      : 'High Score: ' + record.highScore.toLocaleString() + ' points';
+    highScoreStatus.classList.toggle('new', record.isNew);
+    renderShare();
+  }
+
+  function resetRun() {
+    clearInterval(state.tickHandle);
+    stopMotions();
+    clearTimeout(state.transitionHandle);
+    clearPauseState();
+    state.roundToken++;
+    state.roundsCompleted = DEBUG_START_ROUND - 1;
+    state.currentRound = DEBUG_START_ROUND;
+    state.cleared = 0;
+    state.points = 0;
+    state.lives = STARTING_LIVES;
+    state.mistakes = 0;
+    state.timeouts = 0;
+    state.roundMistakes = 0;
+    state.roundStartedAt = null;
+    state.active = false;
+    state.choiceLocked = false;
+    state.paused = false;
+    state.pausedAt = null;
+    state.over = false;
+    state.hasStartedRound = false;
+    state.outcomes = [];
+    state.level = levelForRound(DEBUG_START_ROUND);
+    state.remainingMs = roundDurationMs();
+    document.body.classList.remove('ended');
+    document.getElementById('final').hidden = true;
+    document.getElementById('game').hidden = true;
+    document.getElementById('tutorialModal').hidden = true;
+    document.getElementById('startModal').hidden = false;
+    document.getElementById('status').textContent = '';
+    document.getElementById('seeScore').hidden = true;
+    document.getElementById('board').classList.remove('round-reveal', 'success-hold');
+    const introHighScore = document.getElementById('introHighScore');
+    const highScore = readHighScore();
+    introHighScore.hidden = highScore <= 0;
+    introHighScore.textContent = highScore > 0 ? 'HIGH SCORE: ' + highScore.toLocaleString() : '';
+    document.getElementById('demoExplanation').hidden = false;
+    updateHud();
+  }
+
+  function beginPlay() {
+    document.getElementById('startModal').hidden = true;
+    document.getElementById('tutorialModal').hidden = true;
+    document.getElementById('game').hidden = false;
+    startRound();
+  }
+
+  function copyShare() {
+    const text = shareText();
+    const done = () => {
+      const button = document.getElementById('copyBtn');
+      button.textContent = 'Copied!';
+      setTimeout(() => { button.textContent = 'Copy'; }, 1500);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done, fallbackCopy);
+    } else fallbackCopy();
+
+    function fallbackCopy() {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try { document.execCommand('copy'); done(); }
+      catch (error) { document.getElementById('copyBtn').textContent = 'Copy failed'; }
+      textarea.remove();
+    }
+  }
+
+  const small = () => matchMedia('(max-width: 1024px)').matches;
+  const landscape = () => matchMedia('(orientation: landscape)').matches;
+
+  function fitBoard() {
+    const root = document.documentElement;
+    const board = document.getElementById('board');
+    if (!small() || document.getElementById('game').hidden) {
+      root.style.setProperty('--cell', CELL_MAX + 'px');
+      return;
+    }
+
+    const hudwrap = document.querySelector('.hudwrap');
+    root.style.setProperty('--hud-space', hudwrap.offsetHeight + 'px');
+    const trial = 40;
+    root.style.setProperty('--cell', trial + 'px');
+    const widthPerCell = board.offsetWidth / trial;
+    const heightPerCell = board.offsetHeight / trial;
+    if (!widthPerCell || !heightPerCell) return;
+
+    const bodyStyle = getComputedStyle(document.body);
+    const padX = parseFloat(bodyStyle.paddingLeft) + parseFloat(bodyStyle.paddingRight);
+    const padY = parseFloat(bodyStyle.paddingTop) + parseFloat(bodyStyle.paddingBottom);
+    const title = document.querySelector('h1');
+    const titleStyle = getComputedStyle(title);
+    const titleSpace = title.offsetHeight + parseFloat(titleStyle.marginTop) + parseFloat(titleStyle.marginBottom);
+    const status = document.getElementById('status');
+    const availableWidth = root.clientWidth - padX - 6;
+    const availableHeight = root.clientHeight - padY - titleSpace - status.offsetHeight - 12;
+    const cell = Math.min(availableWidth / widthPerCell, availableHeight / heightPerCell);
+    root.style.setProperty('--cell', clamp(Math.floor(cell), CELL_MIN, CELL_MAX) + 'px');
+  }
+
+  addEventListener('resize', fitBoard);
+  addEventListener('orientationchange', fitBoard);
+  document.getElementById('startBtn').addEventListener('click', beginPlay);
+  document.getElementById('howToPlayBtn').addEventListener('click', openTutorial);
+  document.getElementById('tutorialBackBtn').addEventListener('click', () => showTutorialStep(1));
+  document.getElementById('tutorialCloseBtn').addEventListener('click', closeTutorial);
+  document.getElementById('tutorialNextBtn').addEventListener('click', () => showTutorialStep(2));
+  document.getElementById('playAgain').addEventListener('click', () => {
+    resetRun();
+    beginPlay();
+  });
+  document.getElementById('seeScore').addEventListener('click', endGame);
+  document.getElementById('copyBtn').addEventListener('click', copyShare);
+  document.getElementById('shareBtn').addEventListener('click', () => {
+    navigator.share({ title: 'Likely Lines', text: shareText() }).catch(() => {});
+  });
+  addEventListener('keydown', event => {
+    const pauseKey = event.code === 'Space' || event.key.toLowerCase() === 'p';
+    if (pauseKey && !document.getElementById('game').hidden && !state.over) {
+      event.preventDefault();
+      if (!event.repeat) togglePause();
+      return;
+    }
+    if (event.key === 'Escape' && !document.getElementById('tutorialModal').hidden) {
+      closeTutorial();
+    }
+  });
+
+  if (preview) {
+    const note = document.getElementById('previewNote');
+    note.hidden = false;
+    note.textContent = 'Engine preview: ' + preview.mode +
+      '. The production difficulty order has not yet been assigned.';
+  }
+  hydrateStaticDice();
+  drawTutorialBoard();
+  resetRun();
+})();
+</script>
+</body>
+</html>
