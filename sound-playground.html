@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Likely Lines — sound playground</title>
+<style>
+  :root {
+    --bg: oklch(17% 0.015 295);
+    --panel: #151a23;
+    --cell: #232833;
+    --border: #323b49;
+    --text: #eceef3;
+    --muted: #98a4b7;
+    --green: #59c67f;
+    --red: #e8695f;
+    --cyan: #62c5d8;
+    --amber: #f0a03c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    min-height: 100vh; margin: 0; padding: 28px;
+    color: var(--text); background: var(--bg);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  button { font: inherit; }
+  button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+  .shell { width: min(1120px, 100%); margin: 0 auto; }
+  header { margin-bottom: 25px; }
+  h1 { margin: 0 0 6px; font-size: clamp(28px, 4vw, 42px); letter-spacing: -.035em; }
+  header p { margin: 0; color: var(--muted); }
+  h2 { margin: 0 0 14px; font-size: 20px; }
+  .group + .group { margin-top: 30px; }
+  .options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .option {
+    min-width: 0; padding: 16px; border: 1px solid var(--border);
+    border-radius: 12px; background: var(--panel);
+  }
+  .option.current { border-color: rgba(89, 198, 127, .72); }
+  .option-head { min-height: 58px; }
+  .option h3 { margin: 0; font-size: 16px; }
+  .option p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+  .stage {
+    position: relative; min-height: 160px; margin: 13px 0; display: grid; place-content: center;
+    border-radius: 9px; background: #0e1119; overflow: hidden;
+  }
+  .line { display: grid; grid-template-columns: repeat(3, 68px); gap: 7px; }
+  .die {
+    position: relative; height: 68px; display: grid; place-items: center;
+    border: 2px solid var(--border); border-radius: 8px; background: var(--cell);
+  }
+  .shape {
+    position: absolute; width: 55px; height: 55px; opacity: .2;
+    background: #607be4; clip-path: polygon(50% 2%, 88% 34%, 92% 65%, 50% 98%, 8% 65%, 12% 34%);
+  }
+  .die:nth-child(2) .shape {
+    background: #2eb5d0; clip-path: polygon(50% 2%, 98% 50%, 50% 98%, 2% 50%);
+  }
+  .roll { position: relative; z-index: 1; font-size: 27px; font-weight: 850; }
+  .heart-row { height: 30px; margin-top: 10px; color: var(--text); font-size: 23px; text-align: center; letter-spacing: 4px; }
+  .play-button {
+    width: 100%; padding: 11px 14px; border: 0; border-radius: 8px;
+    color: #07120c; background: var(--green); cursor: pointer;
+    font-weight: 800; letter-spacing: .03em;
+  }
+  .failure .play-button { color: #190604; background: var(--red); }
+  .gameover .play-button { color: #160e02; background: var(--amber); }
+
+  .stage.success-play .die {
+    animation: successSweep 650ms ease-in-out var(--delay) both;
+  }
+  .stage.success-play .shape { animation: shapeBright 650ms ease-in-out var(--delay) both; }
+  .stage.failure-play .die {
+    animation: failureSweep 560ms ease-in var(--delay) both;
+  }
+  .stage.failure-play .heart-row { animation: heartDrop 620ms ease-out both; }
+  .game-over-message {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    color: var(--text); font-size: 24px; font-weight: 900;
+    letter-spacing: .12em; opacity: 0; transform: scale(.9);
+    text-shadow: 0 2px 18px rgba(0, 0, 0, .8);
+  }
+  .stage.gameover-play .line,
+  .stage.gameover-play .heart-row { animation: boardExit 1100ms ease-out both; }
+  .stage.gameover-play .game-over-message { animation: gameOverReveal 1100ms ease-out both; }
+  .die:nth-child(1) { --delay: 0ms; }
+  .die:nth-child(2) { --delay: 95ms; }
+  .die:nth-child(3) { --delay: 190ms; }
+
+  @keyframes successSweep {
+    0%, 100% { background: var(--cell); border-color: var(--border); box-shadow: 0 0 0 rgba(89,198,127,0); }
+    42%, 66% { background: #1e3326; border-color: var(--green); box-shadow: 0 0 0 3px rgba(89,198,127,.22); }
+  }
+  @keyframes shapeBright {
+    0%, 100% { opacity: .2; }
+    42%, 66% { opacity: 1; }
+  }
+  @keyframes failureSweep {
+    0% { background: var(--cell); border-color: var(--border); }
+    100% { background: #3b2421; border-color: var(--red); box-shadow: inset 0 0 0 1px rgba(232,105,95,.24); }
+  }
+  @keyframes heartDrop {
+    0%, 25% { transform: scale(1); color: var(--text); }
+    48% { transform: scale(1.13); color: var(--red); }
+    100% { transform: scale(1); color: var(--muted); }
+  }
+  @keyframes boardExit {
+    0%, 18% { opacity: 1; filter: grayscale(0); transform: translateY(0); }
+    60%, 100% { opacity: .12; filter: grayscale(1); transform: translateY(4px); }
+  }
+  @keyframes gameOverReveal {
+    0%, 32% { opacity: 0; transform: scale(.9); }
+    64%, 100% { opacity: 1; transform: scale(1); }
+  }
+
+  @media (max-width: 850px) {
+    .options { grid-template-columns: 1fr; }
+    .option-head { min-height: 0; }
+  }
+  @media (max-width: 360px) {
+    body { padding: 14px; }
+    .line { grid-template-columns: repeat(3, 62px); }
+    .die { height: 62px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stage.success-play .die, .stage.success-play .shape,
+    .stage.failure-play .die, .stage.failure-play .heart-row,
+    .stage.gameover-play .line, .stage.gameover-play .heart-row,
+    .stage.gameover-play .game-over-message {
+      animation-duration: .01ms; animation-delay: 0ms;
+    }
+  }
+</style>
+</head>
+<body>
+<main class="shell">
+  <header>
+    <h1>Sound workshop</h1>
+    <p>Each button plays its cue with the matching game feedback.</p>
+  </header>
+
+  <section class="group success" aria-labelledby="successHeading">
+    <h2 id="successHeading">Level complete</h2>
+    <div class="options" id="successOptions"></div>
+  </section>
+
+  <section class="group failure" aria-labelledby="failureHeading">
+    <h2 id="failureHeading">Life lost</h2>
+    <div class="options" id="failureOptions"></div>
+  </section>
+
+  <section class="group gameover" aria-labelledby="gameoverHeading">
+    <h2 id="gameoverHeading">Game over</h2>
+    <div class="options" id="gameoverOptions"></div>
+  </section>
+</main>
+
+<template id="optionTemplate">
+  <article class="option">
+    <div class="option-head"><h3></h3><p></p></div>
+    <div class="stage" aria-hidden="true">
+      <div class="line">
+        <div class="die"><div class="shape"></div><span class="roll">7</span></div>
+        <div class="die"><div class="shape"></div><span class="roll">4</span></div>
+        <div class="die"><div class="shape"></div><span class="roll">7</span></div>
+      </div>
+      <div class="heart-row">♥ ♥ ♥</div>
+      <div class="game-over-message">GAME OVER</div>
+    </div>
+    <button type="button" class="play-button"></button>
+  </article>
+</template>
+
+<script>
+(() => {
+  'use strict';
+
+  const OPTIONS = {
+    success: [
+      { id:'a', name:'A · Bright trill', note:'Warm three-note lift' },
+      { id:'b', name:'B · Glass sparkle · CURRENT V8', note:'Airy, longer and more delicate', current:true },
+      { id:'c', name:'C · Arcade chirp', note:'Compact retro arpeggio' }
+    ],
+    failure: [
+      { id:'a', name:'A · Soft drop', note:'Restrained two-note descent' },
+      { id:'b', name:'B · Low thud · CURRENT V8', note:'Short and weighty', current:true },
+      { id:'c', name:'C · Error blip', note:'Sharper arcade warning' }
+    ],
+    gameover: [
+      { id:'a', name:'A · Falling cadence', note:'Gentle musical closure' },
+      { id:'b', name:'B · Arcade shutdown', note:'Retro stepped descent' },
+      { id:'c', name:'C · Deep dissolve · CURRENT V8', note:'Slow and weighty decay', current:true }
+    ]
+  };
+
+  let audioContext = null;
+
+  function context() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!audioContext) audioContext = new AudioContextClass();
+    if (audioContext.state === 'suspended') void audioContext.resume();
+    return audioContext;
+  }
+
+  function tone(ctx, start, fromHz, toHz, duration, type, volume) {
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(fromHz, start);
+    oscillator.frequency.exponentialRampToValueAtTime(toHz, start + duration);
+    gain.gain.setValueAtTime(.0001, start);
+    gain.gain.exponentialRampToValueAtTime(volume, start + .012);
+    gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+    oscillator.connect(gain).connect(ctx.destination);
+    oscillator.start(start);
+    oscillator.stop(start + duration + .015);
+  }
+
+  function playSuccess(style) {
+    const ctx = context();
+    if (!ctx) return;
+    const now = ctx.currentTime + .015;
+    if (style === 'a') {
+      [523.25, 659.25, 783.99].forEach((hz, i) => tone(ctx, now + i * .065, hz, hz * 1.015, .14, 'triangle', .038));
+    } else if (style === 'b') {
+      [659.25, 987.77, 1318.51].forEach((hz, i) => {
+        tone(ctx, now + i * .09, hz, hz * 1.01, .3, 'sine', .026);
+        tone(ctx, now + i * .09, hz * 2, hz * 2.01, .18, 'sine', .012);
+      });
+    } else {
+      [392, 523.25, 659.25, 783.99].forEach((hz, i) => tone(ctx, now + i * .045, hz, hz, .1, 'square', .018));
+    }
+  }
+
+  function playFailure(style) {
+    const ctx = context();
+    if (!ctx) return;
+    const now = ctx.currentTime + .015;
+    if (style === 'a') {
+      tone(ctx, now, 293.66, 261.63, .17, 'triangle', .04);
+      tone(ctx, now + .105, 233.08, 196, .22, 'triangle', .045);
+    } else if (style === 'b') {
+      tone(ctx, now, 155.56, 82.41, .3, 'sine', .075);
+      tone(ctx, now, 77.78, 55, .24, 'triangle', .025);
+    } else {
+      tone(ctx, now, 311.13, 293.66, .09, 'square', .026);
+      tone(ctx, now + .12, 246.94, 220, .14, 'square', .03);
+    }
+  }
+
+  function playGameOver(style) {
+    const ctx = context();
+    if (!ctx) return;
+    const now = ctx.currentTime + .015;
+    if (style === 'a') {
+      [392, 329.63, 261.63].forEach((hz, i) => tone(ctx, now + i * .15, hz, hz * .985, .24, 'triangle', .034));
+      tone(ctx, now + .44, 196, 196, .48, 'sine', .034);
+    } else if (style === 'b') {
+      [523.25, 392, 293.66, 220].forEach((hz, i) => tone(ctx, now + i * .105, hz, hz, .14, 'square', .018));
+      tone(ctx, now + .43, 110, 55, .42, 'sawtooth', .022);
+    } else {
+      tone(ctx, now, 196, 98, .85, 'sine', .055);
+      tone(ctx, now + .08, 146.83, 73.42, .78, 'triangle', .026);
+      tone(ctx, now + .52, 98, 65.41, .5, 'sine', .025);
+    }
+  }
+
+  function animate(stage, kind) {
+    stage.classList.remove('success-play', 'failure-play', 'gameover-play');
+    void stage.offsetWidth;
+    stage.classList.add(kind + '-play');
+  }
+
+  function build(kind) {
+    const root = document.getElementById(kind + 'Options');
+    const template = document.getElementById('optionTemplate');
+    OPTIONS[kind].forEach(option => {
+      const card = template.content.firstElementChild.cloneNode(true);
+      if (option.current) card.classList.add('current');
+      card.querySelector('h3').textContent = option.name;
+      card.querySelector('p').textContent = option.note;
+      const button = card.querySelector('button');
+      button.textContent = kind === 'success' ? 'Play success' : kind === 'failure' ? 'Play failure' : 'Play game over';
+      button.addEventListener('click', () => {
+        animate(card.querySelector('.stage'), kind);
+        if (kind === 'success') playSuccess(option.id);
+        else if (kind === 'failure') playFailure(option.id);
+        else playGameOver(option.id);
+      });
+      root.appendChild(card);
+    });
+  }
+
+  build('success');
+  build('failure');
+  build('gameover');
+})();
+</script>
+</body>
+</html>
