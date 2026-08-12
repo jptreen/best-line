@@ -618,7 +618,7 @@
         <div class="board tutorial-board" id="tutorialBoard" aria-label="Tutorial dice board"></div>
         <div class="tutorial-copy">
           <p>Click the correct arrow to select the likeliest line.</p>
-          <p>You have 15 seconds per round and 3 lives.</p>
+          <p>You have 20 seconds per round and 3 lives.</p>
         </div>
         <div class="tutorial-feedback" id="tutorialFeedback" aria-live="polite"></div>
       </div>
@@ -648,7 +648,7 @@
     <div class="hud">
       <div class="tile"><div class="big" id="roundNum">1</div><div class="lab">Round</div></div>
       <div class="tile"><div class="big good" id="pointsNum">0</div><div class="lab">Points</div></div>
-      <div class="tile"><div class="big" id="clock">0:15</div><div class="lab">Time</div></div>
+      <div class="tile"><div class="big" id="clock">0:20</div><div class="lab">Time</div></div>
       <div class="tile"><div class="big hearts" id="lives">♥♥♥</div><div class="lab">Lives</div></div>
     </div>
     <div class="level-strip" id="levelStrip"></div>
@@ -730,7 +730,7 @@
         startToast: LEVEL_START_TOASTS[number] || '',
         number,
         tier: setIndex + 1,
-        roundMs: 15000,
+        roundMs: 20000,
         mistakeLifeCost: 1,
         restoreLifeOnClear: false,
         pointsMultiplier: 1,
@@ -761,10 +761,10 @@
     ]
   };
 
-  const DEFAULT_ROUND_MS = 15000;
+  const DEFAULT_ROUND_MS = 20000;
   const STARTING_LIVES = 3;
   const MAX_LIVES = 3;
-  const LIFE_EVERY_CLEARS = 10;
+  const LIFE_EVERY_CLEARS = 5;
   const BASE_POINTS = 15;
   const SHARE_URL = 'https://jptreen.github.io/best-line/v7.html';
   const HIGH_SCORE_KEY = 'best-line-v7-high-score';
