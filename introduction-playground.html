@@ -100,6 +100,7 @@
   .ok-button { min-width: 118px; padding: 12px 28px; color: #07120c; background: var(--green); }
   .timer-lock { margin-top: 14px; color: var(--muted); font-size: 11px; }
 
+  .option-a { border-color: rgba(89, 198, 127, .72); }
   .option-a .intro { transition: opacity .32s ease, visibility 0s linear .32s; }
   .option-a .intro.is-open { transition-delay: 0s; }
   .option-a .intro-card { transform: translateY(14px); transition: transform .38s cubic-bezier(.2,.8,.2,1); }
@@ -167,7 +168,7 @@
         <option value="11" selected>Level 11 · Increment</option>
         <option value="16">Level 16 · Slider</option>
         <option value="21">Level 21 · D4 + D20</option>
-        <option value="26">Level 26 · All motion</option>
+        <option value="26">Level 26 · EVERYTHING</option>
       </select>
     </label>
     <div class="contract"><strong>Timer held at 0:15</strong><br>Only the exact “OK” action starts play.</div>
@@ -214,7 +215,7 @@
     6: {
       level: 6,
       title: 'New dice',
-      copy: 'D6 and D12 join the board.',
+      copy: 'D6 and D12 are on the board.',
       symbol: 'D6 · D12',
       compact: 'D6 + D12'
     },
@@ -228,28 +229,28 @@
     16: {
       level: 16,
       title: 'Slider',
-      copy: 'Increment stops. One row or column now shifts.',
+      copy: 'One row or column shifts every 2.5 seconds.',
       symbol: '←  ROW  →',
       compact: 'ONE LANE · EVERY 2.5s'
     },
     21: {
       level: 21,
       title: 'New dice',
-      copy: 'The board settles. D4 and D20 join the mix.',
+      copy: 'D4 and D20 are on the board.',
       symbol: 'D4 · D20',
       compact: 'D4 + D20'
     },
     26: {
       level: 26,
-      title: 'All motion',
-      copy: 'Slider, increment and teleport are now active.',
+      title: 'EVERYTHING',
+      copy: 'Slider, increment and teleport are active.',
       symbol: '↔  +1  ⇄',
       compact: 'SLIDE · TICK · TELEPORT'
     }
   };
 
   const OPTIONS = [
-    { id:'a', name:'A · Clear briefing', note:'Calm, explicit, familiar' },
+    { id:'a', name:'A · Clear briefing · APPROVED', note:'Current v7 treatment' },
     { id:'b', name:'B · Side card', note:'Directional, quick to scan' },
     { id:'c', name:'C · Signal pulse', note:'Celebratory rule reveal' },
     { id:'d', name:'D · Minimal arcade', note:'The fewest possible words' }
