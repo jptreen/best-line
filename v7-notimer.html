@@ -133,6 +133,25 @@
     margin-top: 16px;
   }
   .tutorial-controls button { min-width: 112px; margin: 0; }
+  .rule-intro-modal { z-index: 45; }
+  .rule-intro-card {
+    width: min(420px, 100%);
+    animation: ruleIntroIn .38s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .rule-intro-kicker {
+    margin-bottom: 12px; color: var(--amber); font-size: 12px;
+    font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  }
+  .rule-intro-card h2 {
+    margin-bottom: 10px; font-size: clamp(34px, 8vw, 48px);
+    line-height: 1; letter-spacing: -.035em;
+  }
+  .rule-intro-card p { min-height: 47px; margin-bottom: 18px; }
+  .rule-intro-card .primary { min-width: 118px; }
+  @keyframes ruleIntroIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
   #game { width: 100%; display: flex; flex-direction: column; align-items: center; }
   .hudwrap { display: flex; flex-direction: column; align-items: center; }
@@ -473,6 +492,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .rule-intro-card,
     .bonus-heart.pulse, .final .scoreline.pulse,
     .final.victory-entrance::before,
     .final.victory-entrance .final-victory > *,
@@ -612,6 +632,15 @@
   </div>
 </div>
 
+<div class="modal rule-intro-modal" id="ruleIntroModal" role="dialog" aria-modal="true" aria-labelledby="ruleIntroTitle" hidden>
+  <div class="card rule-intro-card">
+    <div class="rule-intro-kicker" id="ruleIntroKicker"></div>
+    <h2 id="ruleIntroTitle"></h2>
+    <p id="ruleIntroCopy"></p>
+    <button class="primary" id="ruleIntroOkBtn">OK</button>
+  </div>
+</div>
+
 <h1>Likely Lines</h1>
 
 <main id="game" hidden>
@@ -676,12 +705,12 @@
 
   const LEVEL_START_TOASTS = {
     1: 'Howdy!',
-    6: 'Come on!',
-    11: 'You got this!',
-    16: 'Half-way there!',
-    21: 'YASSSS QUEEN!',
-    26: "Honestly, I don't think anyone's getting far enough to read this one.",
     30: '🚨🚨🚨 FINAL LEVEL ALERT 🚨🚨🚨'
+  };
+
+  const RULE_INTRODUCTIONS = {
+    6: { title: 'New dice', copy: 'D6 and D12 are on the board.' },
+    21: { title: 'New dice', copy: 'D4 and D20 are on the board.' }
   };
 
   const LEVEL_PLAN = LEVEL_SETS.flatMap((set, setIndex) =>
@@ -1409,6 +1438,28 @@
     toastHandle = setTimeout(() => el.classList.remove('show'), holdMs);
   }
 
+  function showRuleIntroduction(introduction) {
+    document.getElementById('ruleIntroKicker').textContent = 'Level ' + state.level.number + ' · New rule';
+    document.getElementById('ruleIntroTitle').textContent = introduction.title;
+    document.getElementById('ruleIntroCopy').textContent = introduction.copy;
+    document.getElementById('ruleIntroModal').hidden = false;
+    document.getElementById('game').inert = true;
+    setPickDisabled(true);
+    document.getElementById('ruleIntroOkBtn').focus();
+  }
+
+  function activatePreparedRound() {
+    if (state.active || state.over) return;
+    document.getElementById('ruleIntroModal').hidden = true;
+    document.getElementById('game').inert = false;
+    const board = document.getElementById('board');
+    void board.offsetWidth;
+    board.classList.add('round-reveal');
+    state.hasStartedRound = true;
+    state.active = true;
+    setPickDisabled(false);
+  }
+
   function sweepCorrectLine(key) {
     const line = state.lines.find(item => item.key === key);
     if (!line) return;
@@ -1559,17 +1610,15 @@
     board.classList.remove('round-reveal', 'success-hold');
     dealBoard();
     drawFreshBoard();
-    void board.offsetWidth;
-    board.classList.add('round-reveal');
     showStatus('');
     updateHud();
     if ((advanced || firstRound) && state.level.startToast) {
       toast(state.level.startToast);
     }
 
-    state.hasStartedRound = true;
-    state.active = true;
-    setPickDisabled(false);
+    const introduction = RULE_INTRODUCTIONS[state.level.number];
+    if (introduction) showRuleIntroduction(introduction);
+    else activatePreparedRound();
   }
 
   function shareParts() {
@@ -1798,6 +1847,8 @@
     document.getElementById('final').hidden = true;
     document.getElementById('game').hidden = true;
     document.getElementById('tutorialModal').hidden = true;
+    document.getElementById('ruleIntroModal').hidden = true;
+    document.getElementById('game').inert = false;
     document.getElementById('startModal').hidden = false;
     document.getElementById('status').textContent = '';
     document.getElementById('board').classList.remove('round-reveal', 'success-hold');
@@ -1879,6 +1930,7 @@
   document.getElementById('tutorialBackBtn').addEventListener('click', () => showTutorialStep(1));
   document.getElementById('tutorialCloseBtn').addEventListener('click', closeTutorial);
   document.getElementById('tutorialNextBtn').addEventListener('click', () => showTutorialStep(2));
+  document.getElementById('ruleIntroOkBtn').addEventListener('click', activatePreparedRound);
   document.getElementById('playAgain').addEventListener('click', () => {
     resetRun();
     beginPlay();
@@ -1889,7 +1941,8 @@
   });
   addEventListener('keydown', event => {
     const pauseKey = event.code === 'Space' || event.key.toLowerCase() === 'p';
-    if (pauseKey && !document.getElementById('game').hidden && !state.over) {
+    const ruleIntroOpen = !document.getElementById('ruleIntroModal').hidden;
+    if (pauseKey && !ruleIntroOpen && !document.getElementById('game').hidden && !state.over) {
       event.preventDefault();
       if (!event.repeat) togglePause();
       return;
