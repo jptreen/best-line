@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Likely Lines — Congratulations playground</title>
+<style>
+  :root {
+    --bg: oklch(17% 0.015 295);
+    --panel: #1c212b;
+    --panel-deep: #141922;
+    --cell-bg: #232833;
+    --border: #2e3542;
+    --text: #e6e6e6;
+    --muted: #8994a7;
+    --green: #59c67f;
+    --red: #e8695f;
+    --amber: #f0a03c;
+    --cyan: #62c5d8;
+    --violet: #bb8cdb;
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    min-height: 100vh;
+    margin: 0;
+    padding: 28px;
+    background:
+      radial-gradient(circle at 50% -10%, rgba(89, 198, 127, .07), transparent 32rem),
+      var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  button, input { font: inherit; }
+  button { -webkit-tap-highlight-color: transparent; }
+
+  .page {
+    width: min(1240px, 100%);
+    margin: 0 auto;
+  }
+  .intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 24px;
+    align-items: end;
+    margin-bottom: 26px;
+  }
+  .eyebrow {
+    margin: 0 0 8px;
+    color: var(--green);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(30px, 4.5vw, 52px);
+    line-height: 1;
+    letter-spacing: -.035em;
+  }
+  .lede {
+    max-width: 720px;
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .global-controls {
+    min-width: 280px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(28, 33, 43, .82);
+  }
+  .global-controls .lab {
+    display: block;
+    margin-bottom: 9px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .preset-row { display: flex; gap: 6px; }
+  .preset, .motion-toggle {
+    min-height: 36px;
+    padding: 7px 12px;
+    border: 1px solid #38404f;
+    border-radius: 7px;
+    cursor: pointer;
+    background: #262c38;
+    color: #b9c2d0;
+    font-weight: 700;
+  }
+  .preset { flex: 1; }
+  .preset:hover, .motion-toggle:hover { background: #333b4a; color: #fff; }
+  .preset[aria-pressed="true"] {
+    border-color: var(--green);
+    background: #1e3326;
+    color: #9be4b5;
+  }
+  .motion-toggle {
+    width: 100%;
+    margin-top: 8px;
+    color: var(--cyan);
+    font-size: 12px;
+  }
+
+  .math-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 26px;
+  }
+  .math-card {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--panel);
+  }
+  .math-card strong { color: var(--green); }
+  .math-card .formula {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+  .option {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: rgba(20, 25, 34, .76);
+  }
+  .option-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .option-name { margin: 0; font-size: 18px; }
+  .option-note {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .tone {
+    align-self: flex-start;
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border: 1px solid rgba(98, 197, 216, .35);
+    border-radius: 999px;
+    color: #bcecf3;
+    background: rgba(98, 197, 216, .08);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .stage {
+    position: relative;
+    min-height: 510px;
+    overflow: hidden;
+    padding: 34px 24px 24px;
+    background: var(--bg);
+    isolation: isolate;
+  }
+  .stage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+  }
+  .victory {
+    position: relative;
+    z-index: 2;
+    width: min(410px, 100%);
+    margin: 0 auto;
+    text-align: center;
+  }
+  .victory-kicker {
+    min-height: 17px;
+    margin-bottom: 7px;
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+  .victory h3 {
+    margin: 0;
+    font-size: clamp(27px, 5vw, 38px);
+    line-height: 1.05;
+    letter-spacing: -.03em;
+  }
+  .victory-copy {
+    min-height: 38px;
+    margin: 9px auto 14px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .scoreline {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 7px;
+    color: var(--green);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .score {
+    display: inline-block;
+    min-width: 3ch;
+    font-size: clamp(58px, 10vw, 74px);
+    font-weight: 800;
+    letter-spacing: -.055em;
+    transform-origin: center;
+  }
+  .score-unit { font-size: 20px; font-weight: 750; }
+
+  .bonus-box {
+    width: min(310px, 100%);
+    margin: 14px auto 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel-deep);
+  }
+  .heart-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    min-height: 38px;
+  }
+  .heart {
+    position: relative;
+    display: grid;
+    width: 38px;
+    height: 38px;
+    color: #4b5566;
+    font-size: 32px;
+    line-height: 1;
+    place-items: center;
+    transform-origin: center;
+  }
+  .heart.remaining { color: var(--text); }
+  .heart.base::after {
+    content: 'BASE';
+    position: absolute;
+    top: 100%;
+    color: var(--muted);
+    font-size: 7px;
+    font-weight: 850;
+    letter-spacing: .08em;
+  }
+  .heart.awarded { color: var(--green); }
+  .bonus-status {
+    min-height: 18px;
+    margin-top: 10px;
+    color: #b9c2d0;
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .bonus-status strong { color: var(--green); }
+
+  .share-card {
+    margin-top: 18px;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+    color: #b9c2d0;
+    line-height: 1.45;
+  }
+  .share-score { color: var(--text); font-size: 15px; font-weight: 750; }
+  .run-map {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin: 8px 0 6px;
+  }
+  .run-map span {
+    width: 19px;
+    height: 7px;
+    border-radius: 2px;
+    background: var(--green);
+  }
+  .run-map span:nth-child(2) { background: var(--cyan); }
+  .run-map span:nth-child(3) { background: var(--violet); }
+  .run-map span:nth-child(4) { background: var(--amber); }
+  .run-map span:nth-child(5) { background: #d95368; }
+  .run-map span:nth-child(6) { background: #526bd0; }
+  .share-link { color: var(--muted); font-size: 10px; }
+  .game-actions {
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    margin-top: 10px;
+  }
+  .game-actions span {
+    padding: 6px 12px;
+    border: 1px solid #38404f;
+    border-radius: 6px;
+    background: #262c38;
+    color: #b9c2d0;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .game-actions .again {
+    border-color: transparent;
+    background: var(--green);
+    color: #10141a;
+  }
+
+  .manual-controls {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 7px;
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+  }
+  .manual-controls button {
+    min-width: 0;
+    min-height: 38px;
+    padding: 7px 8px;
+    border: 1px solid #38404f;
+    border-radius: 7px;
+    cursor: pointer;
+    background: #262c38;
+    color: #b9c2d0;
+    font-size: 11px;
+    font-weight: 750;
+    line-height: 1.2;
+  }
+  .manual-controls button:hover { background: #333b4a; color: #fff; }
+  .manual-controls .full {
+    border-color: rgba(89, 198, 127, .6);
+    background: #1e3326;
+    color: #9be4b5;
+  }
+
+  .confetti-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .particle {
+    position: absolute;
+    width: var(--w, 7px);
+    height: var(--h, 12px);
+    border-radius: var(--radius, 1px);
+    background: var(--color, var(--green));
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+
+  /* A — a celebratory extension of the current centered end screen. */
+  .style-a .stage::before {
+    background: radial-gradient(circle at 50% 28%, rgba(89, 198, 127, .11), transparent 44%);
+  }
+  .style-a .bonus-box { border-color: rgba(89, 198, 127, .34); }
+  .style-a .stage.entrance .victory {
+    animation: aEntrance 700ms cubic-bezier(.16, 1, .3, 1) both;
+  }
+  .style-a .stage.entrance .share-card {
+    animation: aShare 540ms cubic-bezier(.16, 1, .3, 1) 170ms both;
+  }
+  .style-a .particle { animation: rain 1500ms cubic-bezier(.2, .75, .3, 1) var(--delay) both; }
+
+  /* B — a compact high-score machine, still using the game's HUD geometry. */
+  .style-b .stage::before {
+    background:
+      linear-gradient(90deg, transparent 49.8%, rgba(98, 197, 216, .08) 50%, transparent 50.2%),
+      radial-gradient(circle at 50% 33%, rgba(98, 197, 216, .1), transparent 38%);
+  }
+  .style-b .victory h3 { color: #bcecf3; }
+  .style-b .scoreline {
+    width: max-content;
+    margin: 0 auto;
+    padding: 10px 18px;
+    border: 1px solid rgba(98, 197, 216, .38);
+    border-radius: 10px;
+    background: #171e27;
+    box-shadow: inset 0 0 24px rgba(98, 197, 216, .06);
+  }
+  .style-b .stage.entrance .victory-kicker { animation: bKicker 580ms steps(6, end) both; }
+  .style-b .stage.entrance .scoreline { animation: bScore 680ms cubic-bezier(.2, .9, .2, 1) 90ms both; }
+  .style-b .stage.entrance .victory h3,
+  .style-b .stage.entrance .victory-copy,
+  .style-b .stage.entrance .bonus-box,
+  .style-b .stage.entrance .share-card,
+  .style-b .stage.entrance .game-actions { animation: bReveal 460ms ease-out 160ms both; }
+  .style-b .particle { animation: burst 1100ms cubic-bezier(.17, .67, .2, 1) var(--delay) both; }
+
+  /* C — reuses the directional sweep vocabulary from successful line picks. */
+  .style-c .stage::before {
+    background: linear-gradient(90deg, transparent, rgba(89, 198, 127, .05), transparent);
+    transform: translateX(-100%);
+  }
+  .style-c .stage.entrance::before { animation: cSweep 900ms ease-in-out both; }
+  .style-c .stage.entrance .victory > * {
+    animation: cContent 520ms ease-out var(--content-delay, 0ms) both;
+  }
+  .style-c .stage.entrance .victory-kicker { --content-delay: 0ms; }
+  .style-c .stage.entrance h3 { --content-delay: 65ms; }
+  .style-c .stage.entrance .victory-copy { --content-delay: 130ms; }
+  .style-c .stage.entrance .scoreline { --content-delay: 195ms; }
+  .style-c .stage.entrance .bonus-box { --content-delay: 260ms; }
+  .style-c .stage.entrance .share-card { --content-delay: 325ms; }
+  .style-c .stage.entrance .game-actions { --content-delay: 390ms; }
+  .style-c .run-map span { transform-origin: left center; }
+  .style-c .stage.entrance .run-map span {
+    animation: cRun 330ms ease-out calc(430ms + var(--i) * 45ms) both;
+  }
+  .style-c .particle { animation: sides 1250ms cubic-bezier(.2, .75, .3, 1) var(--delay) both; }
+
+  /* D — strongest option: an arcade jackpot without changing the UI system. */
+  .style-d .stage::before {
+    background:
+      radial-gradient(circle at 50% 29%, rgba(240, 160, 60, .13), transparent 31%),
+      radial-gradient(circle at 50% 29%, rgba(89, 198, 127, .07), transparent 52%);
+  }
+  .style-d .victory-kicker { color: var(--amber); }
+  .style-d .victory h3 { text-shadow: 0 0 22px rgba(240, 160, 60, .12); }
+  .style-d .scoreline { color: #79db9d; }
+  .style-d .stage.entrance .victory-kicker { animation: dDrop 480ms cubic-bezier(.2, 1.3, .3, 1) both; }
+  .style-d .stage.entrance h3 { animation: dDrop 620ms cubic-bezier(.2, 1.3, .3, 1) 60ms both; }
+  .style-d .stage.entrance .scoreline { animation: dJackpot 780ms cubic-bezier(.2, 1.25, .3, 1) 100ms both; }
+  .style-d .stage.entrance .victory-copy,
+  .style-d .stage.entrance .bonus-box,
+  .style-d .stage.entrance .share-card,
+  .style-d .stage.entrance .game-actions { animation: dFade 500ms ease-out 250ms both; }
+  .style-d .particle { animation: fountain 1400ms cubic-bezier(.15, .7, .2, 1) var(--delay) both; }
+
+  .heart.bonus-pop { animation: heartPop 520ms cubic-bezier(.18, 1.45, .35, 1) both; }
+  .score.score-pop { animation: scorePop 520ms cubic-bezier(.18, 1.3, .35, 1) both; }
+  .bonus-box.bonus-glow { animation: bonusGlow 520ms ease-out both; }
+
+  @keyframes aEntrance {
+    from { opacity: 0; transform: translateY(18px) scale(.98); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes aShare {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes bKicker {
+    from { opacity: 0; letter-spacing: .32em; }
+    to { opacity: 1; letter-spacing: .14em; }
+  }
+  @keyframes bScore {
+    0% { opacity: 0; transform: scaleX(.45); filter: brightness(2); }
+    64% { opacity: 1; transform: scaleX(1.04); }
+    100% { opacity: 1; transform: none; filter: none; }
+  }
+  @keyframes bReveal {
+    from { opacity: 0; transform: translateY(7px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes cSweep {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
+  @keyframes cContent {
+    from { opacity: 0; transform: translateX(-18px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes cRun {
+    from { opacity: 0; transform: scaleX(0); }
+    to { opacity: 1; transform: scaleX(1); }
+  }
+  @keyframes dDrop {
+    from { opacity: 0; transform: translateY(-20px) scale(.95); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes dJackpot {
+    0% { opacity: 0; transform: scale(.58) rotate(-2deg); }
+    65% { opacity: 1; transform: scale(1.08) rotate(1deg); }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes dFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes heartPop {
+    0% { color: var(--text); transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+    45% { color: var(--green); transform: scale(1.48); filter: drop-shadow(0 0 9px rgba(89, 198, 127, .65)); }
+    100% { color: var(--green); transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+  }
+  @keyframes scorePop {
+    0% { transform: scale(1); filter: brightness(1); }
+    42% { transform: scale(1.14); filter: brightness(1.4); }
+    100% { transform: scale(1); filter: brightness(1); }
+  }
+  @keyframes bonusGlow {
+    0% { box-shadow: 0 0 0 rgba(89, 198, 127, 0); }
+    45% { border-color: var(--green); box-shadow: 0 0 22px rgba(89, 198, 127, .24); }
+    100% { box-shadow: 0 0 0 rgba(89, 198, 127, 0); }
+  }
+  @keyframes rain {
+    0% { opacity: 0; transform: translate3d(var(--x0), -30px, 0) rotate(0); }
+    12% { opacity: 1; }
+    100% { opacity: 0; transform: translate3d(var(--x1), 560px, 0) rotate(var(--spin)); }
+  }
+  @keyframes burst {
+    0% { opacity: 1; transform: translate3d(var(--cx), var(--cy), 0) scale(.5) rotate(0); }
+    75% { opacity: 1; }
+    100% { opacity: 0; transform: translate3d(var(--x1), var(--y1), 0) scale(1.1) rotate(var(--spin)); }
+  }
+  @keyframes sides {
+    0% { opacity: 0; transform: translate3d(var(--x0), var(--y0), 0) rotate(0); }
+    12% { opacity: 1; }
+    100% { opacity: 0; transform: translate3d(var(--x1), var(--y1), 0) rotate(var(--spin)); }
+  }
+  @keyframes fountain {
+    0% { opacity: 0; transform: translate3d(var(--x0), 520px, 0) scale(.6) rotate(0); }
+    12% { opacity: 1; }
+    56% { opacity: 1; transform: translate3d(var(--x1), var(--apex), 0) scale(1) rotate(calc(var(--spin) * .55)); }
+    100% { opacity: 0; transform: translate3d(var(--x2), 570px, 0) scale(.9) rotate(var(--spin)); }
+  }
+
+  .stage.reduced *,
+  .stage.reduced::before,
+  body.force-reduced .stage *,
+  body.force-reduced .stage::before {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+
+  .notes {
+    margin-top: 24px;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--panel);
+  }
+  .notes h2 { margin: 0 0 8px; font-size: 17px; }
+  .notes p, .notes li { color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .notes ul { margin: 8px 0 0; padding-left: 20px; }
+  .notes strong { color: var(--text); }
+
+  @media (max-width: 900px) {
+    body { padding: 18px; }
+    .intro { grid-template-columns: 1fr; align-items: start; }
+    .global-controls { width: 100%; min-width: 0; }
+    .options { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    body { padding: 12px; }
+    .math-strip { grid-template-columns: 1fr; }
+    .option-head { align-items: flex-start; }
+    .stage { min-height: 500px; padding: 26px 14px 20px; }
+    .manual-controls { grid-template-columns: repeat(2, 1fr); }
+    .manual-controls .full { grid-column: span 2; }
+    .score { font-size: 56px; }
+    .score-unit { font-size: 17px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="intro">
+    <div>
+      <p class="eyebrow">V7 end-screen workshop</p>
+      <h1>Congratulations, with more voltage.</h1>
+      <p class="lede">Six treatments that stay inside Likely Lines’ visual system while making a completed 30-level run feel substantially more celebratory. Nothing animates until you ask it to.</p>
+    </div>
+    <div class="global-controls" aria-label="Playground settings">
+      <span class="lab">Remaining-life outcome</span>
+      <div class="preset-row">
+        <button class="preset" data-lives="1" aria-pressed="false">♥ ×1</button>
+        <button class="preset" data-lives="2" aria-pressed="false">♥ ×2</button>
+        <button class="preset" data-lives="3" aria-pressed="true">♥ ×3</button>
+      </div>
+      <button class="motion-toggle" id="motionToggle" aria-pressed="false">Simulate reduced motion: OFF</button>
+    </div>
+  </header>
+
+  <section class="math-strip" aria-label="Life bonus reference">
+    <div class="math-card"><strong>1 life · ×1.00</strong><span class="formula">12,480 → 12,480 · no extra-life bonus</span></div>
+    <div class="math-card"><strong>2 lives · ×1.10</strong><span class="formula">12,480 → 13,728 · one +10% pulse</span></div>
+    <div class="math-card"><strong>3 lives · ×1.21</strong><span class="formula">12,480 → 13,728 → 15,101 · two compounding pulses</span></div>
+  </section>
+
+  <section class="options" id="options" aria-label="Congratulations screen treatments"></section>
+
+  <section class="notes">
+    <h2>Shared behavior</h2>
+    <p>The first remaining life protects the run but earns no multiplier. Each heart above one adds 10% to the score <strong>sequentially</strong>, so three lives are ×1.10 ×1.10 = <strong>×1.21</strong>. The displayed score rounds to the nearest whole point after each pulse.</p>
+    <ul>
+      <li>Every entrance, heart bonus, and confetti treatment has its own manual replay button.</li>
+      <li>“Full sequence” is the only control that chains the three phases.</li>
+      <li>Reduced motion preserves score and bonus information, but applies it immediately and replaces particle motion with a brief static celebration.</li>
+      <li>The share card remains recognizable from v6; celebration is concentrated around the result, not the utility controls.</li>
+    </ul>
+  </section>
+</main>
+
+<template id="optionTemplate">
+  <article class="option">
+    <header class="option-head">
+      <div><h2 class="option-name"></h2><p class="option-note"></p></div>
+      <span class="tone"></span>
+    </header>
+    <div class="stage">
+      <div class="confetti-layer" aria-hidden="true"></div>
+      <div class="victory">
+        <div class="victory-kicker">Run complete · 30 / 30</div>
+        <h3>Incredible run!</h3>
+        <p class="victory-copy">You cleared every level and made it out with lives to spare.</p>
+        <div class="scoreline"><span class="score">12,480</span><span class="score-unit">points</span></div>
+        <div class="bonus-box">
+          <div class="heart-row" aria-label="3 lives remaining">
+            <span class="heart" data-heart="1">♥</span>
+            <span class="heart" data-heart="2">♥</span>
+            <span class="heart" data-heart="3">♥</span>
+          </div>
+          <div class="bonus-status" aria-live="polite"></div>
+        </div>
+        <div class="share-card">
+          <div class="share-score">Likely Lines — <span class="share-total">12,480</span> pts</div>
+          <div class="run-map" aria-label="All six level sets completed"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="share-link">likely-lines.example/v7</div>
+        </div>
+        <div class="game-actions" aria-hidden="true"><span>Copy</span><span>Share</span><span class="again">Play again</span></div>
+      </div>
+    </div>
+    <div class="manual-controls">
+      <button class="full" data-action="full">Full sequence</button>
+      <button data-action="entrance">Entrance</button>
+      <button data-action="bonus">Life bonus</button>
+      <button data-action="confetti">Confetti</button>
+      <button data-action="reset">Reset</button>
+    </div>
+  </article>
+</template>
+
+<script>
+(() => {
+  'use strict';
+
+  const BASE_SCORE = 12480;
+  const COLORS = ['#59c67f', '#62c5d8', '#bb8cdb', '#f0a03c', '#d95368', '#526bd0'];
+  const REDUCED_QUERY = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const treatments = [
+    {
+      style: 'a',
+      name: 'A · Arcade Cascade',
+      note: 'The direct v6 evolution: smooth settle, sequential heart pops, and a compact rain of dice-palette confetti.',
+      tone: 'Closest to v6',
+      kicker: 'Run complete · 30 / 30',
+      heading: 'Incredible run!',
+      copy: 'You cleared every level and made it out with lives to spare.'
+    },
+    {
+      style: 'b',
+      name: 'B · Score Reactor',
+      note: 'The score arrives like a powered-up HUD readout, followed by a short central particle burst.',
+      tone: 'Tech / crisp',
+      kicker: 'Sequence cleared · All levels',
+      heading: 'Maximum likelihood.',
+      copy: 'Thirty levels solved. The numbers never stood a chance.'
+    },
+    {
+      style: 'c',
+      name: 'C · Victory Sweep',
+      note: 'Reuses the directional-sweep grammar of a successful line, then sends celebration in from both sides.',
+      tone: 'Most game-native',
+      kicker: 'Winning line · Complete',
+      heading: 'That’s the best line.',
+      copy: 'Every set cleared, every final choice made, and the run is yours.'
+    },
+    {
+      style: 'd',
+      name: 'D · Final-Level Jackpot',
+      note: 'The boldest treatment: a springy score drop and twin confetti fountains, still built from the existing palette.',
+      tone: 'Most arcade',
+      kicker: 'Final level cleared',
+      heading: 'You beat Likely Lines!',
+      copy: 'A complete run, banked with every remaining heart.'
+    },
+    {
+      style: 'e',
+      visual: 'c',
+      name: 'E · Victory Sweep + Jackpot Copy',
+      note: 'Option C’s game-native directional sweep paired with Option D’s final-level wording.',
+      tone: 'C visuals · D copy',
+      kicker: 'Final level cleared',
+      heading: 'You beat Likely Lines!',
+      copy: 'A complete run, banked with every remaining heart.'
+    },
+    {
+      style: 'f',
+      visual: 'c',
+      name: 'F · Victory Sweep, Reduced Copy',
+      note: 'Option E with the supporting sentence, BASE marker, and “complete” bonus wording removed.',
+      tone: 'Leanest version',
+      kicker: 'Final level cleared',
+      heading: 'You beat Likely Lines!',
+      copy: '',
+      hideBase: true,
+      conciseBonus: true
+    }
+  ];
+
+  let selectedLives = 3;
+  let sequenceId = 0;
+  let forcedReduced = false;
+
+  const template = document.getElementById('optionTemplate');
+  const options = document.getElementById('options');
+
+  treatments.forEach((treatment) => {
+    const fragment = template.content.cloneNode(true);
+    const option = fragment.querySelector('.option');
+    const visual = treatment.visual || treatment.style;
+    option.classList.add('style-' + visual, 'option-' + treatment.style);
+    option.dataset.style = visual;
+    option.dataset.hideBase = String(Boolean(treatment.hideBase));
+    option.dataset.conciseBonus = String(Boolean(treatment.conciseBonus));
+    option.querySelector('.option-name').textContent = treatment.name;
+    option.querySelector('.option-note').textContent = treatment.note;
+    option.querySelector('.tone').textContent = treatment.tone;
+    option.querySelector('.victory-kicker').textContent = treatment.kicker;
+    option.querySelector('h3').textContent = treatment.heading;
+    const victoryCopy = option.querySelector('.victory-copy');
+    victoryCopy.textContent = treatment.copy;
+    victoryCopy.hidden = !treatment.copy;
+    option.querySelectorAll('.run-map span').forEach((segment, index) => segment.style.setProperty('--i', index));
+    options.appendChild(fragment);
+  });
+
+  function multiplierFor(lives) {
+    return Math.pow(1.1, Math.max(0, lives - 1));
+  }
+
+  function totalFor(lives) {
+    let score = BASE_SCORE;
+    for (let life = 2; life <= lives; life++) score = Math.round(score * 1.1);
+    return score;
+  }
+
+  function isReduced() {
+    return forcedReduced || REDUCED_QUERY.matches;
+  }
+
+  function setLives(lives) {
+    selectedLives = lives;
+    sequenceId++;
+    document.querySelectorAll('.preset').forEach((button) => {
+      button.setAttribute('aria-pressed', String(Number(button.dataset.lives) === lives));
+    });
+    document.querySelectorAll('.option').forEach(resetOption);
+  }
+
+  function resetOption(option) {
+    sequenceId++;
+    const stage = option.querySelector('.stage');
+    stage.classList.remove('entrance');
+    stage.classList.toggle('reduced', isReduced());
+    option.querySelector('.confetti-layer').replaceChildren();
+    option.querySelector('.score').textContent = BASE_SCORE.toLocaleString();
+    option.querySelector('.share-total').textContent = BASE_SCORE.toLocaleString();
+    option.querySelector('.score').classList.remove('score-pop');
+    option.querySelector('.bonus-box').classList.remove('bonus-glow');
+    option.querySelectorAll('.heart').forEach((heart, index) => {
+      heart.classList.toggle('remaining', index < selectedLives);
+      heart.classList.toggle(
+        'base',
+        option.dataset.hideBase !== 'true' && index === 0 && selectedLives > 0
+      );
+      heart.classList.remove('awarded', 'bonus-pop');
+    });
+    option.querySelector('.heart-row').setAttribute('aria-label', selectedLives + (selectedLives === 1 ? ' life remaining' : ' lives remaining'));
+    option.querySelector('.bonus-status').innerHTML = selectedLives === 1
+      ? '1 life · <strong>×1.00</strong> · score holds'
+      : selectedLives + ' lives · ready for <strong>×' + multiplierFor(selectedLives).toFixed(2) + '</strong> bonus';
+  }
+
+  function restartClass(element, className) {
+    element.classList.remove(className);
+    void element.offsetWidth;
+    element.classList.add(className);
+  }
+
+  function playEntrance(option) {
+    const stage = option.querySelector('.stage');
+    stage.classList.toggle('reduced', isReduced());
+    restartClass(stage, 'entrance');
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  async function playBonus(option) {
+    const mySequence = ++sequenceId;
+    const reduced = isReduced();
+    const scoreEl = option.querySelector('.score');
+    const shareEl = option.querySelector('.share-total');
+    const status = option.querySelector('.bonus-status');
+    const bonusBox = option.querySelector('.bonus-box');
+    const hearts = option.querySelectorAll('.heart');
+    let score = BASE_SCORE;
+
+    scoreEl.textContent = score.toLocaleString();
+    shareEl.textContent = score.toLocaleString();
+    hearts.forEach((heart) => heart.classList.remove('awarded', 'bonus-pop'));
+    if (selectedLives === 1) {
+      status.innerHTML = '1 life · <strong>×1.00</strong> · no bonus to add';
+      return;
+    }
+
+    status.textContent = 'Banking remaining lives…';
+    if (!reduced) await wait(230);
+    for (let index = 1; index < selectedLives; index++) {
+      if (mySequence !== sequenceId) return;
+      score = Math.round(score * 1.1);
+      const heart = hearts[index];
+      heart.classList.add('awarded');
+      restartClass(heart, 'bonus-pop');
+      restartClass(scoreEl, 'score-pop');
+      restartClass(bonusBox, 'bonus-glow');
+      scoreEl.textContent = score.toLocaleString();
+      shareEl.textContent = score.toLocaleString();
+      status.innerHTML = 'Heart ' + (index + 1) + ' banked · <strong>+10%</strong> · ' + score.toLocaleString();
+      if (!reduced) await wait(650);
+    }
+    if (mySequence !== sequenceId) return;
+    const bonusLabel = option.dataset.conciseBonus === 'true' ? 'Life bonus' : 'Life bonus complete';
+    status.innerHTML = bonusLabel + ' · <strong>×' + multiplierFor(selectedLives).toFixed(2) + '</strong>';
+  }
+
+  function random(min, max) { return min + Math.random() * (max - min); }
+
+  function makeParticle(layer, style, index, count) {
+    const particle = document.createElement('i');
+    particle.className = 'particle';
+    particle.style.setProperty('--color', COLORS[index % COLORS.length]);
+    particle.style.setProperty('--delay', Math.round(random(0, 260)) + 'ms');
+    particle.style.setProperty('--spin', Math.round(random(-680, 680)) + 'deg');
+    particle.style.setProperty('--w', Math.round(random(5, 9)) + 'px');
+    particle.style.setProperty('--h', Math.round(random(7, 14)) + 'px');
+    if (index % 5 === 0) particle.style.setProperty('--radius', '50%');
+
+    if (style === 'a') {
+      particle.style.left = random(3, 97).toFixed(1) + '%';
+      particle.style.top = '-20px';
+      particle.style.setProperty('--x0', '0px');
+      particle.style.setProperty('--x1', random(-45, 45).toFixed(0) + 'px');
+    } else if (style === 'b') {
+      const angle = (Math.PI * 2 * index / count) + random(-.18, .18);
+      const distance = random(150, 310);
+      particle.style.left = '50%';
+      particle.style.top = '180px';
+      particle.style.setProperty('--cx', '0px');
+      particle.style.setProperty('--cy', '0px');
+      particle.style.setProperty('--x1', Math.cos(angle) * distance + 'px');
+      particle.style.setProperty('--y1', (Math.sin(angle) * distance + 105) + 'px');
+    } else if (style === 'c') {
+      const fromLeft = index % 2 === 0;
+      particle.style.left = fromLeft ? '-12px' : 'calc(100% + 12px)';
+      particle.style.top = random(80, 370) + 'px';
+      particle.style.setProperty('--x0', '0px');
+      particle.style.setProperty('--y0', '0px');
+      particle.style.setProperty('--x1', (fromLeft ? 1 : -1) * random(260, 610) + 'px');
+      particle.style.setProperty('--y1', random(-120, 120) + 'px');
+    } else {
+      const fromLeft = index % 2 === 0;
+      particle.style.left = fromLeft ? '8%' : '92%';
+      particle.style.top = '0';
+      particle.style.setProperty('--x0', '0px');
+      particle.style.setProperty('--x1', (fromLeft ? 1 : -1) * random(100, 245) + 'px');
+      particle.style.setProperty('--x2', (fromLeft ? 1 : -1) * random(35, 320) + 'px');
+      particle.style.setProperty('--apex', random(20, 210) + 'px');
+    }
+    layer.appendChild(particle);
+  }
+
+  function playConfetti(option) {
+    const layer = option.querySelector('.confetti-layer');
+    const style = option.dataset.style;
+    layer.replaceChildren();
+    const reduced = isReduced();
+    const count = reduced ? 18 : 54;
+    for (let index = 0; index < count; index++) makeParticle(layer, style, index, count);
+    if (reduced) {
+      Array.from(layer.children).forEach((particle, index) => {
+        particle.style.animation = 'none';
+        particle.style.opacity = index < 18 ? '.78' : '0';
+        particle.style.left = (8 + (index * 29) % 84) + '%';
+        particle.style.top = (28 + (index * 41) % 62) + 'px';
+        particle.style.transform = 'rotate(' + (index * 31) + 'deg)';
+      });
+      window.setTimeout(() => layer.replaceChildren(), 500);
+    } else {
+      window.setTimeout(() => layer.replaceChildren(), 2100);
+    }
+  }
+
+  async function playFull(option) {
+    const mySequence = ++sequenceId;
+    resetOption(option);
+    const activeSequence = ++sequenceId;
+    playEntrance(option);
+    if (!isReduced()) await wait(520);
+    if (activeSequence !== sequenceId) return;
+    playConfetti(option);
+    await playBonus(option);
+  }
+
+  options.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-action]');
+    if (!button) return;
+    const option = button.closest('.option');
+    const action = button.dataset.action;
+    if (action === 'full') playFull(option);
+    if (action === 'entrance') playEntrance(option);
+    if (action === 'bonus') playBonus(option);
+    if (action === 'confetti') playConfetti(option);
+    if (action === 'reset') resetOption(option);
+  });
+
+  document.querySelectorAll('.preset').forEach((button) => {
+    button.addEventListener('click', () => setLives(Number(button.dataset.lives)));
+  });
+
+  document.getElementById('motionToggle').addEventListener('click', (event) => {
+    forcedReduced = !forcedReduced;
+    document.body.classList.toggle('force-reduced', forcedReduced);
+    event.currentTarget.setAttribute('aria-pressed', String(forcedReduced));
+    event.currentTarget.textContent = 'Simulate reduced motion: ' + (forcedReduced ? 'ON' : 'OFF');
+    document.querySelectorAll('.option').forEach(resetOption);
+  });
+
+  REDUCED_QUERY.addEventListener?.('change', () => {
+    document.querySelectorAll('.option').forEach(resetOption);
+  });
+
+  document.querySelectorAll('.option').forEach(resetOption);
+})();
+</script>
+</body>
+</html>

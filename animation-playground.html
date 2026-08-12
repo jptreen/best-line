@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Likely Lines — animation playground</title>
+<style id="dynamicMotionStyles"></style>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: oklch(17% 0.015 295);
+    --panel: #171d26;
+    --panel-2: #1c232e;
+    --cell-bg: #232833;
+    --border: #303949;
+    --text: #edf1f7;
+    --muted: #8994a7;
+    --green: #59c67f;
+    --red: #e8695f;
+    --amber: #f0a03c;
+    --cyan: #62c5d8;
+    --die-opacity: .15;
+    --type-opacity: .5;
+  }
+
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    min-width: 320px; margin: 0; padding: 48px 24px 80px;
+    background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { width: min(1240px, 100%); margin: 0 auto; }
+  h1 { margin: 0; font-size: clamp(30px, 5vw, 54px); letter-spacing: -.035em; }
+  h2 { margin: 0; font-size: clamp(23px, 3vw, 34px); }
+  h3 { margin: 0; font-size: 18px; }
+  p { line-height: 1.55; }
+  .lede { max-width: 760px; margin: 12px 0 0; color: var(--muted); font-size: 17px; }
+  .manual-note {
+    display: inline-flex; gap: 8px; align-items: center; margin-top: 18px;
+    padding: 8px 12px; border: 1px solid rgba(89, 198, 127, .35);
+    border-radius: 999px; color: #a8e8bd; background: rgba(89, 198, 127, .08);
+    font-size: 12px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .manual-note::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  section { margin-top: 68px; }
+  .section-head { display: flex; gap: 24px; justify-content: space-between; align-items: end; margin-bottom: 22px; }
+  .section-head p { max-width: 610px; margin: 0; color: var(--muted); font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .existing-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .card {
+    min-width: 0; padding: 22px; border: 1px solid var(--border); border-radius: 14px;
+    background: linear-gradient(145deg, #171d26, #141922);
+  }
+  .card-head { min-height: 76px; display: flex; gap: 16px; justify-content: space-between; align-items: start; }
+  .eyebrow { color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .card h3 { margin-top: 5px; }
+  .card-copy { max-width: 420px; margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+  .duration { flex: 0 0 auto; color: #6f7b8e; font: 750 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; }
+  .stage {
+    min-height: 252px; margin: 18px 0; padding: 18px; border: 1px solid #273141;
+    border-radius: 11px; background: #10151d; display: grid; place-items: center;
+    overflow: hidden;
+  }
+  .fade-card .stage { min-height: 150px; }
+  .existing-grid .stage { min-height: 180px; }
+  button.trigger {
+    width: 100%; min-height: 44px; padding: 10px 16px; border: 1px solid #46536a;
+    border-radius: 8px; background: #262e3b; color: var(--text); cursor: pointer;
+    font: 760 13px/1.2 inherit; letter-spacing: .035em;
+  }
+  button.trigger:hover { background: #313b4a; border-color: #60708a; }
+  button.trigger:focus-visible { outline: 3px solid rgba(98, 197, 216, .55); outline-offset: 2px; }
+  .state { min-height: 18px; margin: 9px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+
+  .mini-board { display: grid; grid-template-columns: repeat(4, 64px); gap: 6px; }
+  .cell {
+    position: relative; width: 64px; height: 64px; overflow: hidden;
+    border: 2px solid var(--border); border-radius: 8px; background: var(--cell-bg);
+  }
+  .die-visual { width: 100%; height: 100%; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .18)); }
+  .die-visual svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .die-visual .die-geometry { opacity: var(--die-opacity); }
+  .die-visual .face {
+    fill: var(--die-color); stroke: var(--die-edge); stroke-width: 2.6;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .die-visual .facet-fill { fill: rgba(255, 255, 255, .08); }
+  .die-visual .facet-line {
+    fill: none; stroke: rgba(255, 255, 255, .22); stroke-width: 1.35;
+    stroke-linejoin: round; stroke-linecap: round;
+  }
+  .die-visual .value {
+    opacity: 1; fill: #fff; font-size: 42px; font-weight: 850; letter-spacing: -.04em;
+    text-anchor: middle; paint-order: stroke; stroke: rgba(0, 0, 0, .18); stroke-width: 1.5px;
+    transform-box: fill-box; transform-origin: center;
+  }
+  .die-visual .sides {
+    opacity: var(--type-opacity); fill: #fff; font-size: 10px; font-weight: 800;
+    letter-spacing: .08em; text-anchor: middle; paint-order: stroke;
+    stroke: rgba(0, 0, 0, .24); stroke-width: 1.6px;
+  }
+  .die-visual[data-sides="4"]  { --die-color: #d98436; --die-edge: #f4ad65; }
+  .die-visual[data-sides="6"]  { --die-color: #d95368; --die-edge: #f08091; }
+  .die-visual[data-sides="8"]  { --die-color: #198fa6; --die-edge: #51bfd0; }
+  .die-visual[data-sides="10"] { --die-color: #526bd0; --die-edge: #8397e9; }
+  .die-visual[data-sides="12"] { --die-color: #9360bd; --die-edge: #bb8cdb; }
+  .die-visual[data-sides="20"] { --die-color: #288b69; --die-edge: #5dba95; }
+
+  .fade-row { display: grid; grid-template-columns: repeat(6, 58px); gap: 7px; }
+  .fade-row .cell { width: 58px; height: 58px; }
+  .progress { height: 3px; margin-top: 14px; overflow: hidden; border-radius: 9px; background: #252d39; }
+  .progress > span { display: block; width: 100%; height: 100%; background: var(--green); transform: scaleX(0); transform-origin: left; }
+
+  .single-die { width: 76px; height: 76px; }
+  .single-die .cell { width: 76px; height: 76px; }
+  .motion-row { display: grid; grid-template-columns: repeat(4, 58px); gap: 7px; }
+  .motion-row .cell { width: 58px; height: 58px; }
+  .shift-lane .cell { box-shadow: inset 0 0 0 1px rgba(240, 160, 60, .38); }
+  .teleport-grid { display: grid; grid-template-columns: repeat(2, 64px); gap: 8px; }
+  .teleport-grid .cell { border-style: dashed; border-color: rgba(203, 123, 235, .82); }
+  .teleport-grid .cell::before { content: "✦"; position: absolute; z-index: 2; top: 2px; left: 5px; color: #d89af0; font-size: 12px; }
+  .wrong-demo { display: grid; gap: 12px; place-items: center; }
+  .wrong-line { display: grid; grid-template-columns: repeat(4, 52px); gap: 6px; }
+  .wrong-line .cell { width: 52px; height: 52px; }
+  .pick {
+    width: 42px; height: 42px; border: 1px solid #38404f; border-radius: 6px;
+    background: #262c38; color: #b9c2d0; font-size: 18px; display: grid; place-items: center;
+  }
+  .toast-demo {
+    padding: 10px 18px; border: 1px solid var(--amber); border-radius: 8px;
+    background: #2a2118; color: #f5c27d; font-size: 13px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45); opacity: 0; transform: translateY(-14px);
+  }
+  .tier-demo {
+    width: min(260px, 100%); min-height: 112px; padding: 22px; border: 1px solid #354054;
+    border-radius: 10px; background: oklch(17% .015 295); display: grid; place-items: center;
+    text-align: center; color: #b9c2d0;
+  }
+  .inventory {
+    margin-top: 68px; padding: 22px; border: 1px solid #283242; border-radius: 14px; background: #121821;
+  }
+  .inventory h2 { font-size: 20px; }
+  .inventory ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 30px; margin: 18px 0 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
+  .inventory strong { color: var(--text); }
+
+  @media (max-width: 940px) {
+    .grid, .existing-grid { grid-template-columns: 1fr; }
+    .card-head { min-height: 0; }
+  }
+  @media (max-width: 600px) {
+    body { padding: 28px 12px 60px; }
+    section { margin-top: 52px; }
+    .section-head { display: block; }
+    .section-head p { margin-top: 8px; }
+    .card { padding: 16px; }
+    .stage { padding: 12px; }
+    .mini-board { grid-template-columns: repeat(4, 53px); gap: 4px; }
+    .mini-board .cell { width: 53px; height: 53px; border-radius: 7px; }
+    .fade-row { grid-template-columns: repeat(3, 58px); }
+    .inventory ul { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Animation playground</h1>
+    <p class="lede">A manual audition room for Likely Lines. Each button runs one isolated behaviour; nothing moves until you ask it to, and every demo can be replayed immediately.</p>
+    <div class="manual-note">Manual triggers only</div>
+  </header>
+
+  <section aria-labelledby="successTitle">
+    <div class="section-head">
+      <div><div class="eyebrow">01 · Success feedback</div><h2 id="successTitle">Four ways for a chosen line to resolve</h2></div>
+      <p>Every version affects only the selected four dice. The green treatment and restored die opacity are tested together, because they must communicate the same answer.</p>
+    </div>
+    <div class="grid" id="successGrid"></div>
+  </section>
+
+  <section aria-labelledby="fadeTitle">
+    <div class="section-head">
+      <div><div class="eyebrow">02 · Round reveal</div><h2 id="fadeTitle">Four five-second opacity descents</h2></div>
+      <p>All options begin at 100% body and label opacity and finish at the v4 defaults: 15% body and 50% label. Only the pacing changes.</p>
+    </div>
+    <div class="grid" id="fadeGrid"></div>
+  </section>
+
+  <section aria-labelledby="existingTitle">
+    <div class="section-head">
+      <div><div class="eyebrow">03 · Existing language</div><h2 id="existingTitle">Motion already in the game</h2></div>
+      <p>These source-matched demos keep the rest of the design vocabulary visible while judging new work. Each is independently triggered.</p>
+    </div>
+    <div class="grid existing-grid" id="existingGrid"></div>
+  </section>
+
+  <aside class="inventory" aria-labelledby="inventoryTitle">
+    <h2 id="inventoryTitle">Source-motion audit</h2>
+    <ul>
+      <li><strong>v3 success:</strong> 180ms green-and-scale flash, then return.</li>
+      <li><strong>v4 success:</strong> 950ms directional sweep across the chosen line.</li>
+      <li><strong>v4 round reveal:</strong> 5s early-settle body/label opacity fade.</li>
+      <li><strong>Value tick:</strong> 250ms scale-and-opacity pop.</li>
+      <li><strong>Lane shift / teleport:</strong> 360ms positional move plus 420ms amber glow.</li>
+      <li><strong>Wrong pick:</strong> 340ms button pulse plus a 705ms directional red sweep whose borders remain.</li>
+      <li><strong>Toast:</strong> 220ms translate-and-opacity transition in and out.</li>
+      <li><strong>Tier change:</strong> 700ms background-colour transition.</li>
+      <li><strong>Pause:</strong> excluded here because v4 swaps visibility without animation.</li>
+    </ul>
+  </aside>
+</main>
+
+<script>
+(() => {
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const runs = new Map();
+  let renderSerial = 0;
+  let animationSerial = 0;
+
+  function roundedPolygon(points, rounding) {
+    const pointAt = (from, to, distance) => {
+      const length = Math.hypot(to[0] - from[0], to[1] - from[1]);
+      const amount = Math.min(distance, length / 2) / length;
+      return [from[0] + (to[0] - from[0]) * amount, from[1] + (to[1] - from[1]) * amount];
+    };
+    const number = value => Number(value.toFixed(2));
+    return points.map((point, index) => {
+      const previous = points[(index - 1 + points.length) % points.length];
+      const next = points[(index + 1) % points.length];
+      const entry = pointAt(point, previous, rounding);
+      const exit = pointAt(point, next, rounding);
+      return `${index ? 'L' : 'M'}${number(entry[0])},${number(entry[1])} Q${point[0]},${point[1]} ${number(exit[0])},${number(exit[1])}`;
+    }).join(' ') + ' Z';
+  }
+
+  const faces = {
+    4: roundedPolygon([[50, 7.7], [93.24, 88.54], [6.76, 88.54]], 2.35),
+    6: roundedPolygon([[13.02, 13.02], [86.98, 13.02], [86.98, 86.98], [13.02, 86.98]], 6.02),
+    8: roundedPolygon([[50, 3], [95, 50], [50, 97], [5, 50]], 2.8),
+    10: roundedPolygon([[50, 4], [85, 35], [88, 64], [50, 96], [12, 64], [15, 35]], 2.6),
+    12: roundedPolygon([[50, 4], [78, 13], [95, 36], [95, 64], [78, 87], [50, 96], [22, 87], [5, 64], [5, 36], [22, 13]], 2.9),
+    20: roundedPolygon([[50, 3], [91, 27], [91, 73], [50, 97], [9, 73], [9, 27]], 2.8)
+  };
+  const facets = {
+    4: '<polygon class="facet-fill" points="50,7.7 50,57.52 6.76,88.54"/><path class="facet-line" d="M50 7.7 L50 57.52 L6.76 88.54 M50 57.52 L93.24 88.54"/>',
+    6: '',
+    8: '<polygon class="facet-fill" points="50,3 50,50 5,50"/><path class="facet-line" d="M50 3 L50 97 M5 50 L50 50 L95 50"/>',
+    10: '<path class="facet-fill" d="M50 4 L28 63 L50 79 L72 63 Z"/><path class="facet-line" d="M50 4 L28 63 L50 79 L72 63 Z M28 63 L12 64 M50 79 L50 96 M72 63 L88 64"/>',
+    12: `<path class="facet-fill" d="${roundedPolygon([[50, 18], [78, 39], [67, 73], [33, 73], [22, 39]], 1.3)}"/><path class="facet-line" d="M50 18 L78 39 L67 73 L33 73 L22 39 Z M50 18 L50 4 M78 39 L95 36 M67 73 L78 87 M33 73 L22 87 M22 39 L5 36"/>`,
+    20: '<polygon class="facet-fill" points="50,3 50,49 9,27"/><path class="facet-line" d="M50 3 L50 49 L9 27 M50 49 L91 27 M9 73 L50 49 L91 73 M50 49 L50 97 M9 27 L9 73 M91 27 L91 73"/>'
+  };
+
+  function dieMarkup(sides, value) {
+    const clip = `clip-${sides}-${++renderSerial}`;
+    return `<div class="die-visual" data-sides="${sides}"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><clipPath id="${clip}"><path d="${faces[sides]}"/></clipPath></defs><g class="die-geometry"><path class="face" d="${faces[sides]}"/><g clip-path="url(#${clip})">${facets[sides]}</g></g><text class="value" x="50" y="58.8">${value}</text><text class="sides" x="50" y="74.8">d${sides}</text></svg></div>`;
+  }
+
+  const dice = [[4,3],[6,5],[8,7],[10,9],[12,11],[20,17],[8,4],[10,6],[12,8],[20,14],[4,2],[6,4],[10,7],[8,6],[20,12],[12,9]];
+  function cellMarkup([sides, value]) { return `<div class="cell" aria-label="d${sides} showing ${value}">${dieMarkup(sides, value)}</div>`; }
+  function boardMarkup() { return `<div class="mini-board">${dice.map(cellMarkup).join('')}</div>`; }
+  function fadeRowMarkup() { return `<div><div class="fade-row">${dice.slice(0, 6).map(cellMarkup).join('')}</div><div class="progress" aria-hidden="true"><span></span></div></div>`; }
+
+  const successOptions = [
+    { id:'success-legacy', label:'A · Legacy flash', duration:'180ms · simultaneous', copy:'The v3 reference: the chosen line flashes green and slightly larger, then snaps back quickly.', line:'row', variant:'legacy' },
+    { id:'success-breathe', label:'B · Soft breathe', duration:'1.2s · simultaneous', copy:'A restrained fade in, short crest, and fade out. No movement, so the line stays spatially calm.', line:'column', variant:'breathe' },
+    { id:'success-sweep', label:'C · Directional sweep', duration:'0.95s · selected v4', copy:'The selected v4 treatment: a small 95ms hand-off travels along the chosen line, reinforcing its direction.', line:'descending diagonal', variant:'sweep' },
+    { id:'success-settle', label:'D · Resolve and hold', duration:'2s · shaped hold', copy:'The line eases to full green and full die opacity, rests briefly, then releases into the next board.', line:'ascending diagonal', variant:'settle' }
+  ];
+  const fadeOptions = [
+    { id:'fade-linear', label:'A · Linear', duration:'5s · previous v4', copy:'The previous constant-rate descent. Predictable, but the visual information starts diminishing immediately.', variant:'linear' },
+    { id:'fade-gentle', label:'B · Gentle start', duration:'5s · ease-in', copy:'Preserves the fully legible dice longer, then accelerates toward the defaults late in the reveal.', variant:'gentle' },
+    { id:'fade-early', label:'C · Early settle', duration:'5s · selected v4', copy:'The selected v4 curve: it makes the transition quickly, leaving most of the round visually quiet at the default opacity.', variant:'early' },
+    { id:'fade-staged', label:'D · Body then label', duration:'5s · staged', copy:'Holds both briefly, fades the body first, and keeps the type label stronger for longer.', variant:'staged' }
+  ];
+
+  function cardTemplate(item, content, type) {
+    return `<article class="card ${type}-card" id="${item.id}"><div class="card-head"><div><div class="eyebrow">${item.line ? item.line : 'round start'}</div><h3>${item.label}</h3><p class="card-copy">${item.copy}</p></div><span class="duration">${item.duration}</span></div><div class="stage" id="${item.id}-stage">${content}</div><button class="trigger" type="button" data-kind="${type}" data-variant="${item.variant}" aria-controls="${item.id}-stage ${item.id}-state">Play ${item.label.replace(/^. · /, '')}</button><p class="state" id="${item.id}-state" aria-live="polite">Ready to play.</p></article>`;
+  }
+  document.getElementById('successGrid').innerHTML = successOptions.map(item => cardTemplate(item, boardMarkup(), 'success')).join('');
+  document.getElementById('fadeGrid').innerHTML = fadeOptions.map(item => cardTemplate(item, fadeRowMarkup(), 'fade')).join('');
+
+  const existing = [
+    { id:'existing-tick', label:'Value tick', duration:'250ms · v3/v4', copy:'A changing die value contracts, springs just past full size, then settles.', variant:'tick', content:`<div class="single-die">${cellMarkup([10, 6])}</div>` },
+    { id:'existing-shift', label:'Lane shift', duration:'360ms + 420ms glow', copy:'Four dice change places using the game’s positional easing and amber moved trail.', variant:'shift', content:`<div class="motion-row shift-lane">${dice.slice(6, 10).map(cellMarkup).join('')}</div>` },
+    { id:'existing-teleport', label:'Teleporter swap', duration:'360ms + 420ms glow', copy:'Two marked dice exchange positions with the same spatial move and amber arrival cue.', variant:'teleport', content:`<div class="teleport-grid">${dice.slice(10, 14).map(cellMarkup).join('')}</div>` },
+    { id:'existing-wrong', label:'Wrong choice', duration:'705ms sweep · persistent', copy:'The arrow pulses while red borders ease across the selected line in order, then remain for comparison.', variant:'wrong', content:`<div class="wrong-demo"><div class="wrong-line">${dice.slice(0, 4).map(cellMarkup).join('')}</div><div class="pick" aria-hidden="true">→</div></div>` },
+    { id:'existing-toast', label:'Life-restored toast', duration:'220ms in/out', copy:'The amber message descends and fades in, waits, then returns upward.', variant:'toast', content:'<div class="toast-demo" role="status">Ten boards cleared — life restored.</div>' },
+    { id:'existing-tier', label:'Tier background', duration:'700ms · colour only', copy:'The background moves between two adjacent level hues without changing scale or position.', variant:'tier', content:'<div class="tier-demo">Level palette transition</div>' }
+  ];
+  document.getElementById('existingGrid').innerHTML = existing.map(item => cardTemplate({ ...item, line:'existing source' }, item.content, 'existing')).join('');
+
+  function scaled(ms) { return reducedMotion.matches ? 1 : ms; }
+  function removeKeyframes(name) {
+    const sheet = document.getElementById('dynamicMotionStyles').sheet;
+    for (let index = sheet.cssRules.length - 1; index >= 0; index--) {
+      if (sheet.cssRules[index].name === name) sheet.deleteRule(index);
+    }
+  }
+  function begin(card, label, duration) {
+    const previous = runs.get(card.id);
+    if (previous) {
+      previous.animations.forEach(animation => animation.cancel());
+      previous.timers.forEach(clearTimeout);
+    }
+    card.querySelectorAll('[style]').forEach(element => element.removeAttribute('style'));
+    const run = { animations: [], timers: [] };
+    runs.set(card.id, run);
+    const state = card.querySelector('.state');
+    state.textContent = reducedMotion.matches ? `${label} shown without motion.` : `${label} playing…`;
+    const timer = setTimeout(() => {
+      if (runs.get(card.id) !== run) return;
+      state.textContent = 'Complete — ready to replay.';
+    }, scaled(duration) + 40);
+    run.timers.push(timer);
+    return run;
+  }
+  function animate(run, element, frames, options) {
+    const animationName = `audition-${++animationSerial}`;
+    const keyframes = frames.map((frame, index) => {
+      const offset = Number.isFinite(frame.offset) ? frame.offset : (frames.length === 1 ? 1 : index / (frames.length - 1));
+      const declarations = Object.entries(frame)
+        .filter(([property]) => property !== 'offset')
+        .map(([property, value]) => `${property.replace(/[A-Z]/g, match => '-' + match.toLowerCase())}:${value}`)
+        .join(';');
+      return `${offset * 100}%{${declarations}}`;
+    }).join('');
+    document.getElementById('dynamicMotionStyles').sheet.insertRule(`@keyframes ${animationName}{${keyframes}}`);
+    element.style.animationName = animationName;
+    element.style.animationDuration = `${scaled(options.duration)}ms`;
+    element.style.animationDelay = `${scaled(options.delay || 0)}ms`;
+    element.style.animationTimingFunction = options.easing || 'linear';
+    element.style.animationFillMode = options.fill || 'none';
+    element.style.animationIterationCount = '1';
+    const animation = { cancel() {
+      element.style.removeProperty('animation-name');
+      element.style.removeProperty('animation-duration');
+      element.style.removeProperty('animation-delay');
+      element.style.removeProperty('animation-timing-function');
+      element.style.removeProperty('animation-fill-mode');
+      element.style.removeProperty('animation-iteration-count');
+      removeKeyframes(animationName);
+    }};
+    run.animations.push(animation);
+    return animation;
+  }
+  function lineIndices(variant) {
+    if (variant === 'legacy') return [4,5,6,7];
+    if (variant === 'breathe') return [2,6,10,14];
+    if (variant === 'sweep') return [0,5,10,15];
+    return [12,9,6,3];
+  }
+  const greenOn = { backgroundColor:'#1e3326', borderColor:'#59c67f', boxShadow:'0 0 0 3px rgba(89,198,127,.22)' };
+  const greenOff = { backgroundColor:'#232833', borderColor:'#303949', boxShadow:'0 0 0 0 rgba(89,198,127,0)' };
+
+  function runSuccess(card, variant) {
+    const cells = [...card.querySelectorAll('.cell')];
+    const selected = lineIndices(variant).map(index => cells[index]);
+    const duration = variant === 'legacy' ? 180 : variant === 'breathe' ? 1200 : variant === 'sweep' ? 950 : 2000;
+    const run = begin(card, 'Success line', duration);
+    selected.forEach((cell, order) => {
+      const geometry = cell.querySelector('.die-geometry');
+      const label = cell.querySelector('.sides');
+      if (variant === 'legacy') {
+        animate(run, cell, [{ ...greenOn, transform:'scale(1.07)' }, { ...greenOff, transform:'scale(1)' }], { duration:180, easing:'ease-out' });
+        animate(run, geometry, [{ opacity:1 }, { opacity:.15 }], { duration:180, easing:'ease-out' });
+        animate(run, label, [{ opacity:1 }, { opacity:.5 }], { duration:180, easing:'ease-out' });
+      } else if (variant === 'breathe') {
+        const cellFrames = [{ offset:0, ...greenOff }, { offset:.4, ...greenOn }, { offset:.62, ...greenOn }, { offset:1, ...greenOff }];
+        animate(run, cell, cellFrames, { duration:1200, easing:'ease-in-out' });
+        animate(run, geometry, [{ opacity:.15 }, { offset:.4, opacity:1 }, { offset:.62, opacity:1 }, { opacity:.15 }], { duration:1200, easing:'ease-in-out' });
+        animate(run, label, [{ opacity:.5 }, { offset:.4, opacity:1 }, { offset:.62, opacity:1 }, { opacity:.5 }], { duration:1200, easing:'ease-in-out' });
+      } else if (variant === 'sweep') {
+        const delay = order * 95;
+        animate(run, cell, [{ ...greenOff }, { offset:.4, ...greenOn }, { offset:.62, ...greenOn }, { ...greenOff }], { duration:650, delay, easing:'ease-in-out' });
+        animate(run, geometry, [{ opacity:.15 }, { offset:.42, opacity:1 }, { offset:.64, opacity:1 }, { opacity:.15 }], { duration:650, delay, easing:'ease-in-out' });
+        animate(run, label, [{ opacity:.5 }, { offset:.42, opacity:1 }, { offset:.64, opacity:1 }, { opacity:.5 }], { duration:650, delay, easing:'ease-in-out' });
+      } else {
+        const frames = [{ offset:0, ...greenOff }, { offset:.18, ...greenOn }, { offset:.7, ...greenOn }, { offset:1, ...greenOff }];
+        animate(run, cell, frames, { duration:2000, easing:'cubic-bezier(.2,.7,.2,1)' });
+        animate(run, geometry, [{ opacity:.15 }, { offset:.18, opacity:1 }, { offset:.7, opacity:1 }, { opacity:.15 }], { duration:2000, easing:'ease-in-out' });
+        animate(run, label, [{ opacity:.5 }, { offset:.18, opacity:1 }, { offset:.7, opacity:1 }, { opacity:.5 }], { duration:2000, easing:'ease-in-out' });
+      }
+    });
+  }
+
+  function runFade(card, variant) {
+    const run = begin(card, 'Five-second fade', 5000);
+    const geometries = card.querySelectorAll('.die-geometry');
+    const labels = card.querySelectorAll('.sides');
+    let bodyFrames = [{ opacity:1 }, { opacity:.15 }];
+    let labelFrames = [{ opacity:1 }, { opacity:.5 }];
+    let easing = 'linear';
+    if (variant === 'gentle') easing = 'cubic-bezier(.55,.05,.85,.4)';
+    if (variant === 'early') easing = 'cubic-bezier(.16,1,.3,1)';
+    if (variant === 'staged') {
+      bodyFrames = [{ offset:0, opacity:1 }, { offset:.12, opacity:1 }, { offset:.55, opacity:.35 }, { offset:1, opacity:.15 }];
+      labelFrames = [{ offset:0, opacity:1 }, { offset:.35, opacity:1 }, { offset:.75, opacity:.65 }, { offset:1, opacity:.5 }];
+    }
+    geometries.forEach(element => animate(run, element, bodyFrames, { duration:5000, easing }));
+    labels.forEach(element => animate(run, element, labelFrames, { duration:5000, easing }));
+    animate(run, card.querySelector('.progress span'), [{ transform:'scaleX(0)' }, { transform:'scaleX(1)' }], { duration:5000, easing:'linear' });
+  }
+
+  function flip(run, container, mutate, glowElements) {
+    const elements = [...container.querySelectorAll('.cell')];
+    const before = new Map(elements.map(element => [element, element.getBoundingClientRect()]));
+    mutate(elements);
+    const glowing = new Set(glowElements);
+    elements.forEach(element => {
+      const after = element.getBoundingClientRect();
+      const old = before.get(element);
+      const start = { transform:`translate(${old.left - after.left}px, ${old.top - after.top}px)` };
+      const finish = { transform:'translate(0, 0)' };
+      if (glowing.has(element)) {
+        start.boxShadow = '0 0 0 3px rgba(240,160,60,.45)';
+        finish.boxShadow = '0 0 0 0 rgba(240,160,60,0)';
+      }
+      animate(run, element, [start, { offset:.86, transform:'translate(0, 0)', boxShadow: glowing.has(element) ? '0 0 0 1px rgba(240,160,60,.1)' : 'none' }, finish], { duration:420, easing:'cubic-bezier(.2,.8,.2,1)' });
+    });
+  }
+
+  function runExisting(card, variant) {
+    const duration = variant === 'toast' ? 1500 : variant === 'wrong' ? 705 : variant === 'tier' ? 700 : variant === 'tick' ? 250 : 420;
+    const run = begin(card, card.querySelector('h3').textContent, duration);
+    if (variant === 'tick') {
+      const value = card.querySelector('.value');
+      value.textContent = String((Number(value.textContent) % 10) + 1);
+      animate(run, value, [{ transform:'scale(.72)', opacity:.5 }, { offset:.7, transform:'scale(1.17)', opacity:1 }, { transform:'scale(1)', opacity:1 }], { duration:250, easing:'ease-out' });
+    } else if (variant === 'shift') {
+      const container = card.querySelector('.motion-row');
+      const cells = [...container.children];
+      flip(run, container, () => container.prepend(cells[cells.length - 1]), cells);
+    } else if (variant === 'teleport') {
+      const container = card.querySelector('.teleport-grid');
+      const cells = [...container.children];
+      flip(run, container, () => {
+        const firstMarker = document.createComment('first');
+        const lastMarker = document.createComment('last');
+        container.replaceChild(firstMarker, cells[0]);
+        container.replaceChild(lastMarker, cells[3]);
+        container.replaceChild(cells[3], firstMarker);
+        container.replaceChild(cells[0], lastMarker);
+      }, [cells[0], cells[3]]);
+    } else if (variant === 'wrong') {
+      card.querySelectorAll('.cell').forEach((cell, index) => animate(
+        run,
+        cell,
+        [
+          { backgroundColor:'#232833', borderColor:'#303949', boxShadow:'inset 0 0 0 0 rgba(232,105,95,0)' },
+          { backgroundColor:'#3b2421', borderColor:'#e8695f', boxShadow:'inset 0 0 0 1px rgba(232,105,95,.22)' }
+        ],
+        { duration:420, delay:index * 95, easing:'ease-in', fill:'forwards' }
+      ));
+      animate(run, card.querySelector('.pick'), [{ backgroundColor:'#262c38', color:'#b9c2d0' }, { offset:.45, backgroundColor:'#e8695f', color:'#17191d', borderColor:'#e8695f' }, { backgroundColor:'#262c38', color:'#b9c2d0', borderColor:'#38404f' }], { duration:340, easing:'ease-out' });
+    } else if (variant === 'toast') {
+      animate(run, card.querySelector('.toast-demo'), [{ offset:0, opacity:0, transform:'translateY(-14px)' }, { offset:.15, opacity:1, transform:'translateY(0)' }, { offset:.82, opacity:1, transform:'translateY(0)' }, { opacity:0, transform:'translateY(-14px)' }], { duration:1500, easing:'ease' });
+    } else if (variant === 'tier') {
+      const element = card.querySelector('.tier-demo');
+      const alternate = element.dataset.alt !== 'true';
+      element.dataset.alt = String(alternate);
+      animate(run, element, [{ backgroundColor: alternate ? 'oklch(17% .015 295)' : 'oklch(20% .026 250)' }, { backgroundColor: alternate ? 'oklch(20% .026 250)' : 'oklch(17% .015 295)' }], { duration:700, easing:'ease', fill:'forwards' });
+    }
+  }
+
+  document.addEventListener('click', event => {
+    const button = event.target.closest('button.trigger');
+    if (!button) return;
+    const card = button.closest('.card');
+    if (button.dataset.kind === 'success') runSuccess(card, button.dataset.variant);
+    if (button.dataset.kind === 'fade') runFade(card, button.dataset.variant);
+    if (button.dataset.kind === 'existing') runExisting(card, button.dataset.variant);
+  });
+})();
+</script>
+</body>
+</html>

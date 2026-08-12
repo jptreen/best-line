@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Likely Lines — v5 level workshop</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111018;
+      --panel: #171c25;
+      --panel-2: #1d2430;
+      --cell-bg: #232833;
+      --border: #303949;
+      --text: #edf1f7;
+      --muted: #8d98aa;
+      --green: #59c681;
+      --red: #e8695f;
+      --amber: #f0a03c;
+      --cyan: #62c5d8;
+      --die-opacity: .15;
+      --type-opacity: .5;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 34px 22px 70px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input, select { font: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid rgba(98, 197, 216, .7);
+      outline-offset: 2px;
+    }
+    .page-header, main { width: min(1380px, 100%); margin: 0 auto; }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--cyan);
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    h1 { margin: 0; font-size: clamp(30px, 5vw, 54px); letter-spacing: -.035em; }
+    h2 { margin: 0; font-size: 24px; }
+    h3 { margin: 0; font-size: 21px; }
+    p { line-height: 1.5; }
+    .intro { max-width: 780px; margin: 12px 0 0; color: var(--muted); }
+    .reality {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-top: 24px;
+      padding: 17px 19px;
+      border: 1px solid #40506a;
+      border-left: 4px solid var(--cyan);
+      border-radius: 10px;
+      background: #151c27;
+    }
+    .reality strong { color: var(--text); }
+    .reality-copy { margin: 0; color: #b7c0cf; }
+    .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+    .action {
+      padding: 9px 13px;
+      border: 1px solid #3b4556;
+      border-radius: 7px;
+      background: #252c38;
+      color: #dbe2ec;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .action.primary { border-color: var(--green); background: var(--green); color: #10141a; }
+    .action:hover { filter: brightness(1.12); }
+    .action:disabled { cursor: not-allowed; opacity: .38; filter: none; }
+    #copyStatus { min-width: 90px; color: var(--green); font-size: 12px; }
+    .import-panel {
+      margin-top: 14px;
+      padding: 13px 16px;
+      border: 1px solid #303949;
+      border-radius: 9px;
+      background: #151a23;
+    }
+    .import-panel summary { cursor: pointer; color: #c7d0dc; font-weight: 750; }
+    .import-panel p { margin: 9px 0; color: var(--muted); font-size: 12px; }
+    .plan-input {
+      display: block;
+      width: 100%;
+      min-height: 150px;
+      resize: vertical;
+      padding: 10px;
+      border: 1px solid #3a4556;
+      border-radius: 7px;
+      background: #0f141c;
+      color: #dbe2ec;
+      font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    #importStatus { color: var(--green); font-size: 12px; }
+    #importStatus.error { color: var(--red); }
+
+    main { display: grid; gap: 38px; margin-top: 38px; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+    .section-head p { max-width: 720px; margin: 0; color: var(--muted); }
+    .schedule {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 8px;
+    }
+    .schedule-step {
+      position: relative;
+      min-height: 106px;
+      padding: 14px;
+      overflow: hidden;
+      border: 1px solid #333d4c;
+      border-radius: 10px;
+      background: var(--tier-bg);
+    }
+    .schedule-step::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto;
+      height: 4px;
+      background: var(--tier-accent);
+    }
+    .schedule-round { color: #b8c2d1; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .schedule-name { margin-top: 7px; font-weight: 750; }
+    .schedule-detail { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .schedule-badge { display: inline-block; margin-top: 9px; color: var(--cyan); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .schedule-warning { min-height: 20px; margin: 10px 0 0; color: var(--red); font-size: 13px; }
+
+    .level-list {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 18px;
+    }
+    .level-card {
+      --tier-bg: #171c25;
+      --tier-accent: #62c5d8;
+      min-width: 0;
+      padding: 20px;
+      border: 1px solid #303949;
+      border-top: 4px solid var(--tier-accent);
+      border-radius: 13px;
+      background: color-mix(in oklch, var(--tier-bg) 72%, #171c25);
+    }
+    .level-card.boss-level { box-shadow: inset 0 0 0 1px rgba(240, 160, 60, .24); }
+    .card-title { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+    .card-title input {
+      width: min(280px, 100%);
+      padding: 5px 7px;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--text);
+      font-size: 21px;
+      font-weight: 750;
+    }
+    .card-title input:hover, .card-title input:focus { border-color: #46536a; background: #111722; }
+    .level-number { color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+    .status-badge {
+      flex: none;
+      padding: 5px 8px;
+      border: 1px solid #41506a;
+      border-radius: 999px;
+      color: #a9b5c8;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .status-badge.current { border-color: rgba(98, 197, 216, .55); color: var(--cyan); }
+    .status-badge.boss { border-color: rgba(240, 160, 60, .65); color: #f5bd76; }
+    .title-actions { display: flex; flex-wrap: wrap; justify-content: end; align-items: center; gap: 7px; }
+    .order-buttons { display: inline-flex; gap: 5px; }
+    .icon-action {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border: 1px solid #3b4556;
+      border-radius: 6px;
+      background: #252c38;
+      color: #dbe2ec;
+      cursor: pointer;
+      font-weight: 800;
+    }
+    .icon-action:disabled { cursor: default; opacity: .3; }
+    .card-layout { display: grid; grid-template-columns: minmax(210px, .72fr) minmax(300px, 1fr); gap: 18px; margin-top: 15px; }
+    .controls { display: grid; align-content: start; gap: 11px; }
+    .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    label.control { display: grid; gap: 5px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .055em; text-transform: uppercase; }
+    .control input, .control select {
+      width: 100%;
+      min-width: 0;
+      padding: 8px 9px;
+      border: 1px solid #3a4556;
+      border-radius: 6px;
+      background: #111721;
+      color: var(--text);
+    }
+    fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+    legend { margin-bottom: 7px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .055em; text-transform: uppercase; }
+    .pool { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .pool label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 7px 5px;
+      border: 1px solid #364153;
+      border-radius: 6px;
+      background: #151b25;
+      color: #b9c2d0;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .pool input { accent-color: var(--cyan); }
+    .motion-grid { display: grid; gap: 7px; }
+    .motion-rule {
+      display: grid;
+      grid-template-columns: minmax(110px, 1fr) 74px 92px;
+      gap: 7px;
+      align-items: end;
+      padding: 8px;
+      border: 1px solid #303b4c;
+      border-radius: 7px;
+      background: #141a24;
+    }
+    .motion-rule.shift-rule { grid-template-columns: minmax(110px, 1fr) 92px 92px; }
+    .motion-enable, .boss-toggle, .reward-toggle {
+      display: flex;
+      min-height: 34px;
+      align-items: center;
+      gap: 7px;
+      color: #c8d0dc;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .motion-enable input, .boss-toggle input, .reward-toggle input { accent-color: var(--cyan); }
+    .motion-rule label:not(.motion-enable) { display: grid; gap: 4px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .motion-rule input, .motion-rule select {
+      width: 100%;
+      min-width: 0;
+      padding: 7px 6px;
+      border: 1px solid #3a4556;
+      border-radius: 5px;
+      background: #101620;
+      color: var(--text);
+    }
+    .motion-rule input:disabled, .motion-rule select:disabled { cursor: not-allowed; opacity: .42; }
+    .boss-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      align-items: end;
+      padding: 9px;
+      border: 1px solid #3b3542;
+      border-radius: 7px;
+      background: rgba(95, 49, 33, .16);
+    }
+    .toast-control { grid-column: 1 / -1; }
+    .control-note { min-height: 32px; margin: -2px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .card-actions .action { padding: 8px 11px; font-size: 12px; }
+
+    .preview { min-width: 0; display: grid; place-items: center; align-content: start; }
+    .board {
+      --n: 4;
+      --cell: clamp(35px, 4.15vw, 54px);
+      --gap: 6px;
+      display: grid;
+      grid-template-columns: repeat(calc(var(--n) + 2), var(--cell));
+      grid-template-rows: repeat(calc(var(--n) + 1), var(--cell));
+      gap: var(--gap);
+      justify-content: center;
+      isolation: isolate;
+    }
+    .cell, .pick {
+      width: var(--cell);
+      height: var(--cell);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--cell) * .1);
+      background: var(--cell-bg);
+    }
+    .cell { position: relative; display: grid; place-items: center; overflow: hidden; }
+    .pick {
+      padding: 0;
+      color: #aeb8c7;
+      cursor: pointer;
+      font-size: calc(var(--cell) * .25);
+      font-weight: 750;
+    }
+    .pick:hover:not(:disabled) { border-color: #53617a; background: #303746; color: #fff; }
+    .pick:disabled { cursor: default; opacity: .6; }
+    .die-visual { width: 94%; height: 94%; }
+    .die-visual svg { display: block; width: 100%; height: 100%; overflow: visible; }
+    .die-geometry { opacity: var(--die-opacity); }
+    .face { fill: var(--die-color); stroke: var(--die-edge); stroke-width: 3; stroke-linejoin: round; }
+    .facet-fill { fill: rgba(255, 255, 255, .08); }
+    .facet-line { fill: none; stroke: rgba(255, 255, 255, .22); stroke-width: 1.35; stroke-linejoin: round; stroke-linecap: round; }
+    .value {
+      fill: #fff;
+      font-size: 42px;
+      font-weight: 850;
+      letter-spacing: -.04em;
+      text-anchor: middle;
+      paint-order: stroke;
+      stroke: rgba(0, 0, 0, .18);
+      stroke-width: 1.5px;
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+    .sides {
+      opacity: var(--type-opacity);
+      fill: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-anchor: middle;
+      paint-order: stroke;
+      stroke: rgba(0, 0, 0, .24);
+      stroke-width: 1.6px;
+    }
+    .die-visual[data-sides="4"]  { --die-color: #d98436; --die-edge: #f4ad65; }
+    .die-visual[data-sides="6"]  { --die-color: #d95368; --die-edge: #f08091; }
+    .die-visual[data-sides="8"]  { --die-color: #198fa6; --die-edge: #51bfd0; }
+    .die-visual[data-sides="10"] { --die-color: #526bd0; --die-edge: #8397e9; }
+    .die-visual[data-sides="12"] { --die-color: #9360bd; --die-edge: #bb8cdb; }
+    .die-visual[data-sides="20"] { --die-color: #288b69; --die-edge: #5dba95; }
+    .cell.wrong-line { animation: wrongSweep 420ms ease-in var(--line-delay, 0ms) both; }
+    .cell.answer-line { animation: successSweep 650ms ease-in-out var(--line-delay, 0ms) both; }
+    .cell.answer-line .die-geometry { animation: bodySweep 650ms ease-in-out var(--line-delay, 0ms) both; }
+    .cell.answer-line .sides { animation: labelSweep 650ms ease-in-out var(--line-delay, 0ms) both; }
+    .pick.answer-pick { border-color: var(--green); background: #183126; color: var(--green); }
+    .pick.wrong-pick { border-color: var(--red); background: #3b2421; color: #f3a49e; }
+    .cell.rotating::after, .cell.teleporter::before {
+      position: absolute;
+      z-index: 2;
+      color: var(--cyan);
+      font-size: calc(var(--cell) * .16);
+    }
+    .cell.rotating::after { content: '↕'; top: 2px; right: 4px; }
+    .cell.teleporter::before { content: '✦'; top: 2px; left: 4px; color: #d89af0; }
+    .cell.shift-lane { box-shadow: inset 0 0 0 1px rgba(240, 160, 60, .38); }
+    .cell.moved { animation: movedGlow 420ms ease-out; }
+    .cell.value-tick .value { animation: valueTick 250ms ease-out; }
+    @keyframes wrongSweep {
+      from { background: var(--cell-bg); border-color: var(--border); box-shadow: inset 0 0 0 0 rgba(232, 105, 95, 0); }
+      to { background: #3b2421; border-color: var(--red); box-shadow: inset 0 0 0 1px rgba(232, 105, 95, .22); }
+    }
+    @keyframes successSweep {
+      0%, 100% { background: var(--cell-bg); border-color: var(--border); box-shadow: 0 0 0 0 rgba(89, 198, 127, 0); }
+      40%, 62% { background: #1e3326; border-color: var(--green); box-shadow: 0 0 0 3px rgba(89, 198, 127, .22); }
+    }
+    @keyframes bodySweep { 0%, 100% { opacity: var(--die-opacity); } 42%, 64% { opacity: 1; } }
+    @keyframes labelSweep { 0%, 100% { opacity: var(--type-opacity); } 42%, 64% { opacity: 1; } }
+    @keyframes movedGlow { from { box-shadow: 0 0 0 3px rgba(240, 160, 60, .45); } to { box-shadow: 0 0 0 0 rgba(240, 160, 60, 0); } }
+    @keyframes valueTick { 0% { transform: scale(.72); opacity: .5; } 70% { transform: scale(1.17); opacity: 1; } 100% { transform: scale(1); } }
+    .board-status { min-height: 24px; margin: 12px 0 0; text-align: center; color: var(--muted); font-size: 13px; }
+    .board-status.right { color: var(--green); }
+    .board-status.wrong { color: #f28d84; }
+    .board-metrics { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 14px; margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .toast-preview {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      z-index: 50;
+      max-width: min(520px, calc(100vw - 28px));
+      padding: 11px 18px;
+      border: 1px solid var(--amber);
+      border-radius: 8px;
+      background: #2a2118;
+      color: #f5c27d;
+      font-size: 14px;
+      transform: translate(-50%, -18px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .toast-preview.show { transform: translate(-50%, 0); opacity: 1; }
+
+    @media (max-width: 1120px) {
+      .board { --cell: clamp(35px, 7vw, 54px); }
+    }
+    @media (max-width: 820px) {
+      body { padding: 22px 13px 52px; }
+      .reality, .section-head { align-items: start; flex-direction: column; }
+      .schedule { grid-template-columns: repeat(3, 1fr); }
+      .card-layout { grid-template-columns: 1fr; }
+      .controls { order: 2; }
+      .preview { order: 1; }
+      .board { --cell: clamp(35px, 9vw, 54px); }
+    }
+    @media (max-width: 480px) {
+      .schedule { grid-template-columns: repeat(2, 1fr); }
+      .level-card { padding: 14px 10px; }
+      .control-grid { grid-template-columns: 1fr; }
+      .motion-rule, .motion-rule.shift-rule, .boss-options { grid-template-columns: 1fr; }
+      .toast-control { grid-column: auto; }
+      .board { --cell: 34px; --gap: 4px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <p class="eyebrow">Likely Lines · v5 companion</p>
+    <h1>Level ramp workshop</h1>
+    <p class="intro">Compare complete boards, play each proposed difficulty, and adjust the ingredients that control how readable its best line is. Every change here is a local draft until it is copied into v4.</p>
+    <div class="reality">
+      <p class="reality-copy"><strong>Current v5 default:</strong> 30 numbered rounds grouped into six difficulty families. Each family has four regular rounds followed by a motion boss; Level 30 repeats forever. This workshop derives every <code>fromRound</code> value. Motion, toast, timer, boss and life-rule fields are all represented in v5’s plan.</p>
+      <div class="actions">
+        <button class="action primary" id="copyPlan" type="button">Copy draft LEVEL_PLAN</button>
+        <button class="action" id="addLevel" type="button">Add level</button>
+        <button class="action" id="resetPlan" type="button">Reset draft</button>
+        <span id="copyStatus" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+    <details class="import-panel">
+      <summary>Paste an existing LEVEL_PLAN</summary>
+      <p>Paste either the exported <code>const LEVEL_PLAN = […]</code> block or the array alone. Plans are evaluated locally, so only paste content you trust.</p>
+      <textarea class="plan-input" id="planInput" spellcheck="false" placeholder="const LEVEL_PLAN = [ … ];"></textarea>
+      <div class="actions"><button class="action" id="loadPlan" type="button">Load pasted plan</button><span id="importStatus" role="status" aria-live="polite"></span></div>
+    </details>
+  </header>
+
+  <main>
+    <section aria-labelledby="scheduleTitle">
+      <div class="section-head">
+        <h2 id="scheduleTitle">Draft round schedule</h2>
+        <p>Set how many rounds each level lasts, then reorder levels with the arrow controls. A duration of 0 means the final level continues forever.</p>
+      </div>
+      <div class="schedule" id="schedule"></div>
+      <p class="schedule-warning" id="scheduleWarning" role="status"></p>
+    </section>
+
+    <section aria-labelledby="boardsTitle">
+      <div class="section-head">
+        <h2 id="boardsTitle">Playable difficulty boards</h2>
+        <p>Choose any row, column, or diagonal. Wrong lines remain red; the likeliest line sweeps green. “New board” deals again using that card’s settings.</p>
+      </div>
+      <div class="level-list" id="levelList"></div>
+    </section>
+  </main>
+  <div class="toast-preview" id="toastPreview" role="status" aria-live="polite"></div>
+
+  <script>
+  (() => {
+    'use strict';
+
+    const DICE = [4, 6, 8, 10, 12, 20];
+    const TIER_BACKGROUNDS = [
+      'oklch(17% 0.015 295)',
+      'oklch(18% 0.035 280)',
+      'oklch(19% 0.050 300)',
+      'oklch(20% 0.065 330)',
+      'oklch(21% 0.080 15)',
+      'oklch(22% 0.095 30)'
+    ];
+    const TIER_ACCENTS = ['#62c5d8', '#8f88de', '#ba78d2', '#d46fa8', '#e77f78', '#f0a03c'];
+    const EPSILON = 1e-12;
+
+    function makeMotionRules() {
+      return {
+        valueTick:{ enabled:false, count:2, everyMs:1800 },
+        laneShift:{ enabled:false, axis:'either', everyMs:3000 },
+        teleporter:{ enabled:false, count:1, everyMs:3200 }
+      };
+    }
+
+    const FAMILY_RECIPES = [
+      { id:'foundation', name:'Foundation', size:4, dicePool:[8,10], repeatLimit:Infinity, bestRatio:null },
+      { id:'mixed-pool', name:'Mixed pool', size:4, dicePool:[6,8,10,12], repeatLimit:4, bestRatio:null },
+      { id:'tighter-read', name:'Tighter read', size:4, dicePool:[6,8,10,12], repeatLimit:3, bestRatio:null },
+      { id:'long-lines', name:'Long lines', size:5, dicePool:[6,8,10,12], repeatLimit:4, bestRatio:null },
+      { id:'full-spectrum', name:'Full spectrum', size:5, dicePool:[4,6,8,10,12,20], repeatLimit:4, bestRatio:null },
+      { id:'pressure', name:'Pressure', size:5, dicePool:[4,6,8,10,12,20], repeatLimit:3, bestRatio:null }
+    ];
+
+    function bossMotionRules(familyIndex) {
+      const rules = makeMotionRules();
+      const everyMs = familyIndex < 3 ? 7000 : 5000;
+      const ruleIndex = familyIndex % 3;
+      if (ruleIndex === 0) { rules.laneShift.enabled = true; rules.laneShift.everyMs = everyMs; }
+      if (ruleIndex === 1) { rules.valueTick.enabled = true; rules.valueTick.everyMs = everyMs; }
+      if (ruleIndex === 2) { rules.teleporter.enabled = true; rules.teleporter.everyMs = everyMs; }
+      return rules;
+    }
+
+    const BASELINE = FAMILY_RECIPES.flatMap((recipe, familyIndex) =>
+      Array.from({ length:5 }, (_, stepIndex) => {
+        const number = familyIndex * 5 + stepIndex + 1;
+        const boss = stepIndex === 4;
+        return {
+          roundsAtLevel:number === 30 ? 0 : 1,
+          id:`${recipe.id}-${number}${boss ? '-boss' : ''}`,
+          name:boss ? `${recipe.name} Boss` : `${recipe.name} ${stepIndex + 1}`,
+          advanceToast:boss ? `BOSS LEVEL ${number} · ${recipe.name}` : `Level ${number} · ${recipe.name}`,
+          number,
+          tierIndex:familyIndex,
+          pointsMultiplier:1,
+          roundSeconds:30,
+          boss,
+          mistakeLifeCost:1,
+          restoreLifeOnClear:false,
+          size:recipe.size,
+          dicePool:recipe.dicePool.slice(),
+          repeatLimit:recipe.repeatLimit,
+          bestRatio:recipe.bestRatio,
+          motionRules:boss ? bossMotionRules(familyIndex) : makeMotionRules()
+        };
+      })
+    );
+
+    let configs = cloneBaseline();
+    let workshops = [];
+    let dieSerial = 0;
+    let renderSerial = 0;
+
+    function cloneBaseline() {
+      return BASELINE.map(cloneConfig);
+    }
+
+    function cloneConfig(item) {
+      return {
+        ...item,
+        dicePool: item.dicePool.slice(),
+        bestRatio: item.bestRatio ? { ...item.bestRatio } : null,
+        motionRules: {
+          valueTick:{ ...item.motionRules.valueTick },
+          laneShift:{ ...item.motionRules.laneShift },
+          teleporter:{ ...item.motionRules.teleporter }
+        }
+      };
+    }
+
+    function tierBackground(index) {
+      const tier = configs[index]?.tierIndex ?? Math.floor(index / 5);
+      return TIER_BACKGROUNDS[Math.min(tier, TIER_BACKGROUNDS.length - 1)];
+    }
+
+    function tierAccent(index) {
+      const tier = configs[index]?.tierIndex ?? Math.floor(index / 5);
+      return TIER_ACCENTS[Math.min(tier, TIER_ACCENTS.length - 1)];
+    }
+
+    function roundedPolygon(points, rounding) {
+      const pointAt = (from, to, distance) => {
+        const length = Math.hypot(to[0] - from[0], to[1] - from[1]);
+        const amount = Math.min(distance, length / 2) / length;
+        return [from[0] + (to[0] - from[0]) * amount, from[1] + (to[1] - from[1]) * amount];
+      };
+      const number = value => Number(value.toFixed(2));
+      return points.map((point, index) => {
+        const previous = points[(index - 1 + points.length) % points.length];
+        const next = points[(index + 1) % points.length];
+        const entry = pointAt(point, previous, rounding);
+        const exit = pointAt(point, next, rounding);
+        return `${index ? 'L' : 'M'}${number(entry[0])},${number(entry[1])} Q${point[0]},${point[1]} ${number(exit[0])},${number(exit[1])}`;
+      }).join(' ') + ' Z';
+    }
+
+    const FACE_PATHS = {
+      4: roundedPolygon([[50,7.7],[93.24,88.54],[6.76,88.54]],2.35),
+      6: roundedPolygon([[13.02,13.02],[86.98,13.02],[86.98,86.98],[13.02,86.98]],6.02),
+      8: roundedPolygon([[50,3],[95,50],[50,97],[5,50]],2.8),
+      10: roundedPolygon([[50,4],[85,35],[88,64],[50,96],[12,64],[15,35]],2.6),
+      12: roundedPolygon([[50,4],[78,13],[95,36],[95,64],[78,87],[50,96],[22,87],[5,64],[5,36],[22,13]],2.9),
+      20: roundedPolygon([[50,3],[91,27],[91,73],[50,97],[9,73],[9,27]],2.8)
+    };
+    const FACETS = {
+      4:'<polygon class="facet-fill" points="50,7.7 50,57.52 6.76,88.54"/><path class="facet-line" d="M50 7.7 L50 57.52 L6.76 88.54 M50 57.52 L93.24 88.54"/>',
+      6:'',
+      8:'<polygon class="facet-fill" points="50,3 50,50 5,50"/><path class="facet-line" d="M50 3 L50 97 M5 50 L50 50 L95 50"/>',
+      10:'<path class="facet-fill" d="M50 4 L28 63 L50 79 L72 63 Z"/><path class="facet-line" d="M50 4 L28 63 L50 79 L72 63 Z M28 63 L12 64 M50 79 L50 96 M72 63 L88 64"/>',
+      12:`<path class="facet-fill" d="${roundedPolygon([[50,18],[78,39],[67,73],[33,73],[22,39]],1.3)}"/><path class="facet-line" d="M50 18 L78 39 L67 73 L33 73 L22 39 Z M50 18 L50 4 M78 39 L95 36 M67 73 L78 87 M33 73 L22 87 M22 39 L5 36"/>`,
+      20:'<polygon class="facet-fill" points="50,3 50,49 9,27"/><path class="facet-line" d="M50 3 L50 49 L9 27 M50 49 L91 27 M9 73 L50 49 L91 73 M50 49 L50 97 M9 27 L9 73 M91 27 L91 73"/>'
+    };
+
+    function dieMarkup(die) {
+      const clip = `level-die-${die.id}-${++renderSerial}`;
+      return `<div class="die-visual" data-sides="${die.sides}"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><clipPath id="${clip}"><path d="${FACE_PATHS[die.sides]}"/></clipPath></defs><g class="die-geometry"><path class="face" d="${FACE_PATHS[die.sides]}"/><g clip-path="url(#${clip})">${FACETS[die.sides]}</g></g><text class="value" x="50" y="58.8">${die.value}</text><text class="sides" x="50" y="74.8">d${die.sides}</text></svg></div>`;
+    }
+
+    function buildLines(n) {
+      const idx = Array.from({ length:n }, (_, i) => i);
+      const lines = [];
+      for (let r = 0; r < n; r++) lines.push({ key:`R${r + 1}`, label:`row ${r + 1}`, cells:idx.map(c => [r,c]) });
+      for (let c = 0; c < n; c++) lines.push({ key:`C${c + 1}`, label:`column ${c + 1}`, cells:idx.map(r => [r,c]) });
+      lines.push({ key:'D↘', label:'descending diagonal', cells:idx.map(i => [i,i]) });
+      lines.push({ key:'D↙', label:'ascending diagonal', cells:idx.map(i => [i,n - 1 - i]) });
+      return lines;
+    }
+
+    function lineProbability(grid, line) {
+      let best = 0;
+      const maxTarget = Math.max(...grid.flat().map(die => die.sides));
+      for (let target = 1; target <= maxTarget; target++) {
+        let p = 1;
+        for (const [r,c] of line.cells) {
+          const die = grid[r][c];
+          if (die.sides < target) { p = 0; break; }
+          if (die.value !== target) p /= die.sides;
+        }
+        if (p > best) best = p;
+      }
+      return best;
+    }
+
+    function scoredLines(grid, lines) {
+      return lines.map(line => ({ line, p:lineProbability(grid, line) })).sort((a,b) => b.p - a.p);
+    }
+
+    function obeysRepeatLimit(grid, lines, config) {
+      if (motionConfigs(config).length || !Number.isFinite(config.repeatLimit)) return true;
+      return lines.every(line => {
+        const counts = {};
+        return line.cells.every(([r,c]) => {
+          const value = grid[r][c].value;
+          counts[value] = (counts[value] || 0) + 1;
+          return counts[value] < config.repeatLimit;
+        });
+      });
+    }
+
+    function obeysRatio(scores, band) {
+      if (!band) return true;
+      const ratio = scores[1].p === 0 ? Infinity : scores[0].p / scores[1].p;
+      if (Number.isFinite(band.min) && ratio < band.min) return false;
+      if (Number.isFinite(band.max) && ratio > band.max) return false;
+      return true;
+    }
+
+    function dealGrid(config) {
+      const lines = buildLines(config.size);
+      let candidate = null;
+      let accepted = false;
+      let attempts = 0;
+      for (; attempts < 800; attempts++) {
+        candidate = Array.from({ length:config.size }, () => Array.from({ length:config.size }, () => {
+          const sides = config.dicePool[Math.floor(Math.random() * config.dicePool.length)];
+          return { id:++dieSerial, sides, value:1 + Math.floor(Math.random() * sides) };
+        }));
+        const scores = scoredLines(candidate, lines);
+        const unique = scores.length < 2 || scores[0].p - scores[1].p > EPSILON;
+        if (unique && obeysRepeatLimit(candidate, lines, config) && obeysRatio(scores, config.bestRatio)) {
+          accepted = true;
+          break;
+        }
+      }
+      return { grid:candidate, lines, attempts:Math.min(attempts + 1, 800), accepted };
+    }
+
+    function ratioValue(value) {
+      if (value === 'close') return { min:1, max:1.3 };
+      if (value === 'balanced') return { min:1.3, max:1.7 };
+      if (value === 'clear') return { min:1.7, max:null };
+      return null;
+    }
+
+    function ratioKey(band) {
+      if (!band) return 'any';
+      if (band.max === 1.3) return 'close';
+      if (band.max === 1.7) return 'balanced';
+      return 'clear';
+    }
+
+    function repeatLabel(limit) {
+      if (!Number.isFinite(limit)) return 'No repeat filter';
+      return `Reject ${limit}+ matching in a line`;
+    }
+
+    function motionConfigs(config) {
+      const rules = config.motionRules;
+      const motions = [];
+      if (rules.valueTick.enabled) motions.push({ type:'rotate', count:rules.valueTick.count, everyMs:rules.valueTick.everyMs });
+      if (rules.laneShift.enabled) motions.push({ type:'shift', count:1, everyMs:rules.laneShift.everyMs, axis:rules.laneShift.axis });
+      if (rules.teleporter.enabled) motions.push({ type:'teleport', count:rules.teleporter.count, everyMs:rules.teleporter.everyMs });
+      return motions;
+    }
+
+    function position(element, row, column) {
+      element.style.gridRow = String(row);
+      element.style.gridColumn = String(column);
+    }
+
+    function makePick(state, line, symbol, row, column) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'pick';
+      button.dataset.key = line.key;
+      button.textContent = symbol;
+      button.setAttribute('aria-label', `Choose ${line.label}`);
+      position(button, row, column);
+      button.addEventListener('click', () => chooseLine(state, line.key));
+      return button;
+    }
+
+    function drawBoard(state, movedIds = []) {
+      const board = state.card.querySelector('.board');
+      board.innerHTML = '';
+      board.style.setProperty('--n', state.config.size);
+      const n = state.config.size;
+      board.append(
+        makePick(state, state.lines.find(line => line.key === 'D↘'), '↘', 1, 1),
+        makePick(state, state.lines.find(line => line.key === 'D↙'), '↙', 1, n + 2)
+      );
+      for (let c = 0; c < n; c++) board.append(makePick(state, state.lines.find(line => line.key === `C${c + 1}`), '↓', 1, c + 2));
+      for (let r = 0; r < n; r++) board.append(makePick(state, state.lines.find(line => line.key === `R${r + 1}`), '→', r + 2, 1));
+      state.grid.forEach((row, r) => row.forEach((die, c) => {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        if (movedIds.includes(die.id)) cell.classList.add('moved');
+        cell.dataset.pos = `${r},${c}`;
+        cell.dataset.dieId = die.id;
+        cell.innerHTML = dieMarkup(die);
+        cell.setAttribute('aria-label', `d${die.sides} showing ${die.value}`);
+        position(cell, r + 2, c + 2);
+        board.appendChild(cell);
+      }));
+      applyMotionMarkers(state);
+      updateMetrics(state);
+    }
+
+    function applyMotionMarkers(state) {
+      state.runtimes.forEach(runtime => {
+        if (runtime.type === 'rotate') runtime.ids.forEach(id => state.card.querySelector(`.cell[data-die-id="${id}"]`)?.classList.add('rotating'));
+        if (runtime.type === 'teleport') runtime.ids.forEach(id => state.card.querySelector(`.cell[data-die-id="${id}"]`)?.classList.add('teleporter'));
+        if (runtime.type === 'shift') {
+          const selector = runtime.axis === 'row' ? `.cell[data-pos^="${runtime.index},"]` : `.cell[data-pos$=",${runtime.index}"]`;
+          state.card.querySelectorAll(selector).forEach(cell => cell.classList.add('shift-lane'));
+        }
+      });
+    }
+
+    function updateMetrics(state) {
+      const scores = scoredLines(state.grid, state.lines);
+      const ratio = scores[1].p === 0 ? Infinity : scores[0].p / scores[1].p;
+      const odds = scores[0].p ? `1 in ${Math.round(1 / scores[0].p).toLocaleString()}` : 'impossible';
+      const ratioText = Number.isFinite(ratio) ? `${ratio.toFixed(2)}× runner-up` : 'runner-up impossible';
+      state.card.querySelector('.best-metric').textContent = `Best odds ${odds}`;
+      state.card.querySelector('.ratio-metric').textContent = ratioText;
+      state.card.querySelector('.deal-metric').textContent = state.accepted ? `${state.attempts} deal${state.attempts === 1 ? '' : 's'} to qualify` : 'filter cap reached';
+    }
+
+    function chooseLine(state, key) {
+      if (state.locked) return;
+      const scores = scoredLines(state.grid, state.lines);
+      const picked = scores.find(item => item.line.key === key);
+      const correct = picked && picked.p >= scores[0].p - EPSILON;
+      const line = state.lines.find(item => item.key === key);
+      const board = state.card.querySelector('.board');
+      line.cells.forEach(([r,c], index) => {
+        const cell = board.querySelector(`.cell[data-pos="${r},${c}"]`);
+        cell.style.setProperty('--line-delay', `${index * 95}ms`);
+        cell.classList.add(correct ? 'answer-line' : 'wrong-line');
+      });
+      const button = board.querySelector(`.pick[data-key="${CSS.escape(key)}"]`);
+      button?.classList.add(correct ? 'answer-pick' : 'wrong-pick');
+      const status = state.card.querySelector('.board-status');
+      if (correct) {
+        state.locked = true;
+        stopMotions(state);
+        board.querySelectorAll('.pick').forEach(item => { item.disabled = true; });
+        status.textContent = `Correct — ${line.label} is likeliest at 1 in ${Math.round(1 / picked.p).toLocaleString()}.`;
+        status.className = 'board-status right';
+      } else {
+        status.textContent = `${line.label[0].toUpperCase() + line.label.slice(1)} is not the likeliest. Try another.`;
+        status.className = 'board-status wrong';
+      }
+    }
+
+    function randomIds(state, count) {
+      const ids = state.grid.flat().map(die => die.id);
+      for (let i = ids.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+      }
+      return ids.slice(0, Math.min(count, ids.length));
+    }
+
+    function findDie(state, id) {
+      for (let r = 0; r < state.grid.length; r++) {
+        for (let c = 0; c < state.grid.length; c++) if (state.grid[r][c].id === id) return { die:state.grid[r][c], r, c };
+      }
+      return null;
+    }
+
+    function prepareRuntime(state, config) {
+      if (config.type === 'rotate') {
+        const ids = randomIds(state, config.count || 1);
+        const directions = new Map();
+        ids.forEach(id => directions.set(id, Math.random() < .5 ? -1 : 1));
+        return { ...config, ids, directions };
+      }
+      if (config.type === 'shift') return { ...config, axis:Math.random() < .5 ? 'row' : 'column', index:Math.floor(Math.random() * state.config.size), direction:Math.random() < .5 ? -1 : 1, ids:[] };
+      if (config.type === 'teleport') return { ...config, ids:randomIds(state, config.count || 1) };
+      return null;
+    }
+
+    function clearChoiceAfterMotion(state) {
+      state.card.querySelector('.board-status').textContent = 'Board moved — the best line may have changed.';
+      state.card.querySelector('.board-status').className = 'board-status';
+    }
+
+    function tickRuntime(state, runtime) {
+      if (state.locked) return;
+      if (runtime.type === 'rotate') {
+        runtime.ids.forEach(id => {
+          const found = findDie(state, id);
+          if (!found) return;
+          let direction = runtime.directions.get(id) || 1;
+          if (found.die.value <= 1) direction = 1;
+          if (found.die.value >= found.die.sides) direction = -1;
+          found.die.value += direction;
+          runtime.directions.set(id, direction);
+          const cell = state.card.querySelector(`.cell[data-die-id="${id}"]`);
+          if (cell) {
+            cell.querySelector('.value').textContent = found.die.value;
+            cell.setAttribute('aria-label', `d${found.die.sides} showing ${found.die.value}`);
+            cell.classList.remove('value-tick', 'wrong-line', 'answer-line');
+            void cell.offsetWidth;
+            cell.classList.add('value-tick');
+          }
+        });
+        state.card.querySelectorAll('.wrong-pick, .answer-pick').forEach(item => item.classList.remove('wrong-pick', 'answer-pick'));
+        clearChoiceAfterMotion(state);
+        updateMetrics(state);
+        return;
+      }
+      let moved = [];
+      if (runtime.type === 'shift') {
+        moved = runtime.axis === 'row' ? state.grid[runtime.index].map(die => die.id) : state.grid.map(row => row[runtime.index].id);
+        if (runtime.axis === 'row') {
+          const row = state.grid[runtime.index];
+          runtime.direction > 0 ? row.unshift(row.pop()) : row.push(row.shift());
+        } else {
+          const column = state.grid.map(row => row[runtime.index]);
+          runtime.direction > 0 ? column.unshift(column.pop()) : column.push(column.shift());
+          column.forEach((die, r) => { state.grid[r][runtime.index] = die; });
+        }
+      }
+      if (runtime.type === 'teleport') {
+        runtime.ids.forEach(id => {
+          const source = findDie(state, id);
+          if (!source) return;
+          let r = source.r, c = source.c;
+          while (r === source.r && c === source.c) { r = Math.floor(Math.random() * state.config.size); c = Math.floor(Math.random() * state.config.size); }
+          const other = state.grid[r][c];
+          state.grid[r][c] = source.die;
+          state.grid[source.r][source.c] = other;
+          moved.push(id, other.id);
+        });
+      }
+      drawBoard(state, moved);
+      clearChoiceAfterMotion(state);
+    }
+
+    function stopMotions(state) {
+      state.handles.forEach(clearInterval);
+      state.handles = [];
+    }
+
+    function startMotions(state) {
+      stopMotions(state);
+      state.runtimes = motionConfigs(state.config).map(config => prepareRuntime(state, config)).filter(Boolean);
+      applyMotionMarkers(state);
+      state.runtimes.forEach(runtime => state.handles.push(setInterval(() => tickRuntime(state, runtime), runtime.everyMs)));
+    }
+
+    function dealWorkshop(state) {
+      stopMotions(state);
+      const deal = dealGrid(state.config);
+      state.grid = deal.grid;
+      state.lines = deal.lines;
+      state.attempts = deal.attempts;
+      state.accepted = deal.accepted;
+      state.locked = false;
+      state.runtimes = [];
+      const status = state.card.querySelector('.board-status');
+      status.textContent = 'Choose the line most likely to reroll as all matching.';
+      status.className = 'board-status';
+      drawBoard(state);
+      startMotions(state);
+    }
+
+    function option(value, label, selected) {
+      return `<option value="${value}"${selected ? ' selected' : ''}>${label}</option>`;
+    }
+
+    function escapeAttribute(value) {
+      return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function cardMarkup(config, index) {
+      const pool = DICE.map(sides => `<label><input type="checkbox" value="${sides}"${config.dicePool.includes(sides) ? ' checked' : ''}>d${sides}</label>`).join('');
+      return `<article class="level-card" data-index="${index}" style="--tier-bg:${tierBackground(index)};--tier-accent:${tierAccent(index)}">
+        <div class="card-title">
+          <div><div class="level-number">Level ${index + 1}</div><input class="name-input" aria-label="Level ${index + 1} name" value="${escapeAttribute(config.name)}"></div>
+          <div class="title-actions"><div class="order-buttons"><button class="icon-action move-up" type="button" aria-label="Move level ${index + 1} up"${index === 0 ? ' disabled' : ''}>↑</button><button class="icon-action move-down" type="button" aria-label="Move level ${index + 1} down"${index === configs.length - 1 ? ' disabled' : ''}>↓</button></div><span class="status-badge">draft</span></div>
+        </div>
+        <div class="card-layout">
+          <div class="controls">
+            <div class="control-grid">
+              <label class="control">Rounds at this level<input class="rounds-at-level" type="number" min="0" step="1" value="${config.roundsAtLevel}"></label>
+              <label class="control">Grid<select class="grid-size">${option(4,'4 × 4',config.size === 4)}${option(5,'5 × 5',config.size === 5)}</select></label>
+              <label class="control">Round time · seconds<input class="round-seconds" type="number" min="5" step="1" value="${config.roundSeconds}"></label>
+              <label class="control">Points multiplier<input class="points-multiplier" type="number" min="0.1" step="0.1" value="${config.pointsMultiplier}"></label>
+              <label class="control">Repeat filter<select class="repeat-limit">${option('Infinity','None',!Number.isFinite(config.repeatLimit))}${option(4,'Reject 4+',config.repeatLimit === 4)}${option(3,'Reject 3+',config.repeatLimit === 3)}</select></label>
+              <label class="control">Best-line gap<select class="ratio-band">${option('any','Any unique best',ratioKey(config.bestRatio) === 'any')}${option('close','Close · 1–1.3×',ratioKey(config.bestRatio) === 'close')}${option('balanced','Balanced · 1.3–1.7×',ratioKey(config.bestRatio) === 'balanced')}${option('clear','Clear · 1.7×+',ratioKey(config.bestRatio) === 'clear')}</select></label>
+            </div>
+            <fieldset><legend>Dice pool</legend><div class="pool">${pool}</div></fieldset>
+            <label class="control toast-control">Level-advance toast<input class="advance-toast" type="text" value="${escapeAttribute(config.advanceToast)}"></label>
+            <fieldset><legend>Pressure and boss rules</legend><div class="boss-options">
+              <label class="boss-toggle"><input class="boss-enabled" type="checkbox"${config.boss ? ' checked' : ''}>Boss level</label>
+              <label class="control">Lives lost on miss<input class="mistake-life-cost" type="number" min="1" max="3" step="1" value="${config.mistakeLifeCost}"></label>
+              <label class="reward-toggle"><input class="restore-life" type="checkbox"${config.restoreLifeOnClear ? ' checked' : ''}>Restore life on clear</label>
+            </div></fieldset>
+            <fieldset><legend>Motion rules · combine freely</legend><div class="motion-grid">
+              <div class="motion-rule"><label class="motion-enable"><input class="motion-enabled value-tick-enabled" type="checkbox"${config.motionRules.valueTick.enabled ? ' checked' : ''}>Value tick</label><label>Dice<input class="value-tick-count" type="number" min="1" max="8" step="1" value="${config.motionRules.valueTick.count}"></label><label>Every · sec<input class="value-tick-seconds" type="number" min="0.35" max="30" step="0.1" value="${config.motionRules.valueTick.everyMs / 1000}"></label></div>
+              <div class="motion-rule shift-rule"><label class="motion-enable"><input class="motion-enabled lane-shift-enabled" type="checkbox"${config.motionRules.laneShift.enabled ? ' checked' : ''}>Lane shift</label><label>Axis<select class="lane-shift-axis">${option('either','Either',config.motionRules.laneShift.axis === 'either')}${option('row','Row',config.motionRules.laneShift.axis === 'row')}${option('column','Column',config.motionRules.laneShift.axis === 'column')}</select></label><label>Every · sec<input class="lane-shift-seconds" type="number" min="0.35" max="30" step="0.1" value="${config.motionRules.laneShift.everyMs / 1000}"></label></div>
+              <div class="motion-rule"><label class="motion-enable"><input class="motion-enabled teleporter-enabled" type="checkbox"${config.motionRules.teleporter.enabled ? ' checked' : ''}>Teleporter</label><label>Dice<input class="teleporter-count" type="number" min="1" max="8" step="1" value="${config.motionRules.teleporter.count}"></label><label>Every · sec<input class="teleporter-seconds" type="number" min="0.35" max="30" step="0.1" value="${config.motionRules.teleporter.everyMs / 1000}"></label></div>
+            </div></fieldset>
+            <p class="control-note">${repeatLabel(config.repeatLimit)}. Repeat filtering pauses while motion is active, matching v4.</p>
+            <div class="card-actions"><button class="action new-board" type="button">New board</button><button class="action preview-toast" type="button">Preview toast</button><button class="action duplicate-level" type="button">Duplicate level</button><button class="action delete-level" type="button"${configs.length === 1 ? ' disabled' : ''}>Delete level</button></div>
+          </div>
+          <div class="preview">
+            <div class="board" aria-label="Playable level ${index + 1} board"></div>
+            <p class="board-status" aria-live="polite"></p>
+            <div class="board-metrics"><span class="best-metric"></span><span class="ratio-metric"></span><span class="deal-metric"></span></div>
+          </div>
+        </div>
+      </article>`;
+    }
+
+    function readConfig(state) {
+      const card = state.card;
+      const checked = [...card.querySelectorAll('.pool input:checked')].map(input => Number(input.value));
+      if (!checked.length) return false;
+      state.config.name = card.querySelector('.name-input').value.trim() || `Level ${state.config.number}`;
+      state.config.id = state.config.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `level-${state.config.number}`;
+      state.config.roundsAtLevel = Math.max(0, Number.parseInt(card.querySelector('.rounds-at-level').value, 10) || 0);
+      state.config.size = Number(card.querySelector('.grid-size').value);
+      state.config.roundSeconds = Math.max(5, Number(card.querySelector('.round-seconds').value) || 30);
+      state.config.pointsMultiplier = Math.max(.1, Number(card.querySelector('.points-multiplier').value) || 1);
+      state.config.repeatLimit = card.querySelector('.repeat-limit').value === 'Infinity' ? Infinity : Number(card.querySelector('.repeat-limit').value);
+      state.config.dicePool = checked;
+      state.config.bestRatio = ratioValue(card.querySelector('.ratio-band').value);
+      state.config.advanceToast = card.querySelector('.advance-toast').value.trim();
+      state.config.boss = card.querySelector('.boss-enabled').checked;
+      state.config.mistakeLifeCost = Math.max(1, Math.min(3, Number.parseInt(card.querySelector('.mistake-life-cost').value, 10) || 1));
+      state.config.restoreLifeOnClear = card.querySelector('.restore-life').checked;
+      state.config.motionRules.valueTick.enabled = card.querySelector('.value-tick-enabled').checked;
+      state.config.motionRules.valueTick.count = Math.max(1, Math.min(8, Number.parseInt(card.querySelector('.value-tick-count').value, 10) || 1));
+      state.config.motionRules.valueTick.everyMs = Math.max(350, Number(card.querySelector('.value-tick-seconds').value) * 1000 || 1800);
+      state.config.motionRules.laneShift.enabled = card.querySelector('.lane-shift-enabled').checked;
+      state.config.motionRules.laneShift.axis = card.querySelector('.lane-shift-axis').value;
+      state.config.motionRules.laneShift.everyMs = Math.max(350, Number(card.querySelector('.lane-shift-seconds').value) * 1000 || 3000);
+      state.config.motionRules.teleporter.enabled = card.querySelector('.teleporter-enabled').checked;
+      state.config.motionRules.teleporter.count = Math.max(1, Math.min(8, Number.parseInt(card.querySelector('.teleporter-count').value, 10) || 1));
+      state.config.motionRules.teleporter.everyMs = Math.max(350, Number(card.querySelector('.teleporter-seconds').value) * 1000 || 3200);
+      syncControlState(state);
+      return true;
+    }
+
+    function syncControlState(state) {
+      const card = state.card;
+      [
+        ['.value-tick-enabled', ['.value-tick-count', '.value-tick-seconds']],
+        ['.lane-shift-enabled', ['.lane-shift-axis', '.lane-shift-seconds']],
+        ['.teleporter-enabled', ['.teleporter-count', '.teleporter-seconds']]
+      ].forEach(([toggleSelector, controlSelectors]) => {
+        const enabled = card.querySelector(toggleSelector).checked;
+        controlSelectors.forEach(selector => { card.querySelector(selector).disabled = !enabled; });
+      });
+      card.classList.toggle('boss-level', state.config.boss);
+      const motionNames = [];
+      if (state.config.motionRules.valueTick.enabled) motionNames.push('value tick');
+      if (state.config.motionRules.laneShift.enabled) motionNames.push('lane shift');
+      if (state.config.motionRules.teleporter.enabled) motionNames.push('teleporter');
+      const duration = state.config.roundsAtLevel === 0 ? 'Endless final level' : `${state.config.roundsAtLevel} round${state.config.roundsAtLevel === 1 ? '' : 's'} at this level`;
+      const motion = motionNames.length ? `Active motion: ${motionNames.join(', ')}` : 'Static board';
+      card.querySelector('.control-note').textContent = `${duration}. ${repeatLabel(state.config.repeatLimit)}. ${motion}. Repeat filtering pauses while motion is active, matching v4.`;
+    }
+
+    function computedSchedule() {
+      let nextRound = 1;
+      let blocked = false;
+      return configs.map(config => {
+        if (blocked) return { start:null, end:null, config };
+        const start = nextRound;
+        if (config.roundsAtLevel === 0) {
+          blocked = true;
+          return { start, end:Infinity, config };
+        }
+        const end = start + config.roundsAtLevel - 1;
+        nextRound = end + 1;
+        return { start, end, config };
+      });
+    }
+
+    function renderSchedule() {
+      const schedule = document.getElementById('schedule');
+      const timeline = computedSchedule();
+      schedule.innerHTML = timeline.map((entry, index) => {
+        const config = entry.config;
+        const current = isDefaultV5(config, index);
+        const range = entry.start === null ? 'Unreachable' : entry.end === Infinity ? `Round ${entry.start} onward` : entry.start === entry.end ? `Round ${entry.start}` : `Rounds ${entry.start}–${entry.end}`;
+        const motionCount = motionConfigs(config).length;
+        const badge = current ? (config.boss ? 'boss default' : 'v5 default') : config.boss ? 'boss draft' : 'draft';
+        return `<div class="schedule-step" style="--tier-bg:${tierBackground(index)};--tier-accent:${tierAccent(index)}"><div class="schedule-round">${range}</div><div class="schedule-name">Level ${index + 1} · ${config.name}</div><div class="schedule-detail">${config.size}×${config.size} · ${config.roundSeconds}s · ${motionCount} motion rule${motionCount === 1 ? '' : 's'}</div><span class="schedule-badge">${badge}</span></div>`;
+      }).join('');
+      workshops.forEach((state, index) => {
+        const badge = state.card.querySelector('.status-badge');
+        const current = isDefaultV5(state.config, index);
+        badge.textContent = current ? (state.config.boss ? 'boss default' : 'v5 default') : state.config.boss ? 'boss draft' : 'draft';
+        badge.classList.toggle('current', current);
+        badge.classList.toggle('boss', state.config.boss);
+      });
+      const invalid = configs.some((config, index) => config.roundsAtLevel === 0 && index !== configs.length - 1);
+      document.getElementById('scheduleWarning').textContent = invalid ? 'Only the final level can have a duration of 0. Later levels would otherwise be unreachable.' : '';
+      document.getElementById('copyPlan').disabled = invalid;
+    }
+
+    function isDefaultV5(config, index) {
+      const baseline = BASELINE[index];
+      if (!baseline) return false;
+      return config.number === baseline.number && config.roundsAtLevel === baseline.roundsAtLevel &&
+        config.name === baseline.name && config.tierIndex === baseline.tierIndex && config.pointsMultiplier === baseline.pointsMultiplier &&
+        config.roundSeconds === baseline.roundSeconds && config.boss === baseline.boss &&
+        config.mistakeLifeCost === baseline.mistakeLifeCost && config.restoreLifeOnClear === baseline.restoreLifeOnClear &&
+        config.size === baseline.size && config.dicePool.join(',') === baseline.dicePool.join(',') &&
+        config.repeatLimit === baseline.repeatLimit && JSON.stringify(config.bestRatio) === JSON.stringify(baseline.bestRatio) &&
+        JSON.stringify(motionConfigs(config)) === JSON.stringify(motionConfigs(baseline));
+    }
+
+    function renderAll() {
+      workshops.forEach(stopMotions);
+      const list = document.getElementById('levelList');
+      list.innerHTML = configs.map(cardMarkup).join('');
+      workshops = [...list.querySelectorAll('.level-card')].map((card, index) => ({ card, config:configs[index], grid:[], lines:[], handles:[], runtimes:[], locked:false, attempts:0, accepted:false }));
+      workshops.forEach(state => {
+        cardEvents(state);
+        dealWorkshop(state);
+      });
+      renderSchedule();
+    }
+
+    function cardEvents(state) {
+      state.card.querySelector('.new-board').addEventListener('click', () => dealWorkshop(state));
+      state.card.querySelector('.preview-toast').addEventListener('click', () => showToast(state.config.advanceToast || `Level ${state.config.number} · ${state.config.name}`));
+      state.card.querySelector('.move-up').addEventListener('click', () => moveLevel(state, -1));
+      state.card.querySelector('.move-down').addEventListener('click', () => moveLevel(state, 1));
+      state.card.querySelector('.duplicate-level').addEventListener('click', () => duplicateLevel(state));
+      state.card.querySelector('.delete-level').addEventListener('click', () => deleteLevel(state));
+      state.card.addEventListener('input', event => {
+        if (!event.target.matches('input, select') || event.target.matches('.name-input, .advance-toast')) return;
+        if (!readConfig(state)) {
+          event.target.checked = true;
+          state.card.querySelector('.board-status').textContent = 'Keep at least one die type in the pool.';
+          state.card.querySelector('.board-status').className = 'board-status wrong';
+          return;
+        }
+        renderSchedule();
+        if (event.target.matches('.grid-size, .repeat-limit, .ratio-band, .pool input, .motion-enabled, .value-tick-count, .value-tick-seconds, .lane-shift-axis, .lane-shift-seconds, .teleporter-count, .teleporter-seconds')) dealWorkshop(state);
+      });
+      state.card.querySelector('.name-input').addEventListener('input', () => {
+        readConfig(state);
+        renderSchedule();
+      });
+      state.card.querySelector('.advance-toast').addEventListener('input', () => { readConfig(state); });
+      syncControlState(state);
+    }
+
+    function moveLevel(state, direction) {
+      const index = configs.indexOf(state.config);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= configs.length) return;
+      [configs[index], configs[target]] = [configs[target], configs[index]];
+      configs.forEach((config, position) => { config.number = position + 1; });
+      renderAll();
+    }
+
+    function duplicateLevel(state) {
+      const index = configs.indexOf(state.config);
+      if (index < 0) return;
+      const copy = cloneConfig(state.config);
+      copy.name = `${state.config.name} copy`;
+      copy.id = `${state.config.id}-copy`;
+      copy.advanceToast = `${copy.name}`;
+      copy.boss = false;
+      if (state.config.roundsAtLevel === 0) state.config.roundsAtLevel = 1;
+      copy.roundsAtLevel = index === configs.length - 1 ? 0 : 1;
+      configs.splice(index + 1, 0, copy);
+      configs.forEach((config, position) => { config.number = position + 1; });
+      renderAll();
+    }
+
+    function deleteLevel(state) {
+      if (configs.length === 1) return;
+      const index = configs.indexOf(state.config);
+      if (index < 0) return;
+      configs.splice(index, 1);
+      configs.forEach((config, position) => { config.number = position + 1; });
+      configs[configs.length - 1].roundsAtLevel = 0;
+      renderAll();
+    }
+
+    function addLevel() {
+      const last = configs[configs.length - 1];
+      if (last.roundsAtLevel === 0) last.roundsAtLevel = 1;
+      const config = cloneConfig(last);
+      config.name = 'New level';
+      config.id = `level-${configs.length + 1}`;
+      config.advanceToast = `Level ${configs.length + 1}`;
+      config.number = configs.length + 1;
+      config.roundsAtLevel = 0;
+      config.boss = false;
+      config.restoreLifeOnClear = false;
+      configs.push(config);
+      renderAll();
+    }
+
+    let toastPreviewHandle = null;
+    function showToast(message) {
+      const toast = document.getElementById('toastPreview');
+      toast.textContent = message;
+      toast.classList.remove('show');
+      void toast.offsetWidth;
+      toast.classList.add('show');
+      clearTimeout(toastPreviewHandle);
+      toastPreviewHandle = setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    function formatBand(band) {
+      if (!band) return 'null';
+      const max = Number.isFinite(band.max) ? band.max : 'Infinity';
+      return `{ min: ${band.min}, max: ${max} }`;
+    }
+
+    function planText() {
+      const timeline = computedSchedule();
+      const rows = configs.map((config, index) => {
+        const motions = motionConfigs(config).map(motion => {
+          const props = Object.entries(motion).map(([key,value]) => `${key}: ${typeof value === 'string' ? `'${value}'` : value}`).join(', ');
+          return `{ ${props} }`;
+        }).join(', ');
+        return `    {\n      fromRound: ${timeline[index].start},\n      roundsAtLevel: ${config.roundsAtLevel === 0 ? 'Infinity' : config.roundsAtLevel},\n      id: ${JSON.stringify(config.id)},\n      name: ${JSON.stringify(config.name)},\n      advanceToast: ${JSON.stringify(config.advanceToast)},\n      number: ${config.number},\n      tier: ${config.tierIndex + 1},\n      boss: ${config.boss},\n      roundMs: ${config.roundSeconds * 1000},\n      mistakeLifeCost: ${config.mistakeLifeCost},\n      restoreLifeOnClear: ${config.restoreLifeOnClear},\n      pointsMultiplier: ${config.pointsMultiplier},\n      size: ${config.size},\n      dicePool: [${config.dicePool.join(', ')}],\n      repeatLimit: ${Number.isFinite(config.repeatLimit) ? config.repeatLimit : 'Infinity'},\n      bestRatio: ${formatBand(config.bestRatio)},\n      motions: [${motions}]\n    }`;
+      });
+      return `const LEVEL_PLAN = [\n${rows.join(',\n')}\n  ];`;
+    }
+
+    function rulesFromMotions(motions = []) {
+      const rules = makeMotionRules();
+      motions.forEach(motion => {
+        if (motion.type === 'rotate') {
+          rules.valueTick.enabled = true;
+          rules.valueTick.count = Math.max(1, Number(motion.count) || 2);
+          rules.valueTick.everyMs = Math.max(350, Number(motion.everyMs) || 1800);
+        }
+        if (motion.type === 'shift') {
+          rules.laneShift.enabled = true;
+          rules.laneShift.axis = ['row','column','either'].includes(motion.axis) ? motion.axis : 'either';
+          rules.laneShift.everyMs = Math.max(350, Number(motion.everyMs) || 3000);
+        }
+        if (motion.type === 'teleport') {
+          rules.teleporter.enabled = true;
+          rules.teleporter.count = Math.max(1, Number(motion.count) || 1);
+          rules.teleporter.everyMs = Math.max(350, Number(motion.everyMs) || 3200);
+        }
+      });
+      return rules;
+    }
+
+    function normalizeImportedPlan(entries) {
+      if (!Array.isArray(entries) || !entries.length) throw new Error('The pasted plan must contain at least one level.');
+      return entries.map((entry, index) => {
+        if (!entry || typeof entry !== 'object') throw new Error(`Level ${index + 1} is not an object.`);
+        const next = entries[index + 1];
+        const fromRound = Number(entry.fromRound);
+        const nextRound = Number(next?.fromRound);
+        let roundsAtLevel = Number(entry.roundsAtLevel);
+        if (!Number.isFinite(roundsAtLevel)) roundsAtLevel = Number.isFinite(fromRound) && Number.isFinite(nextRound) ? Math.max(1, nextRound - fromRound) : 0;
+        const dicePool = Array.isArray(entry.dicePool) ? entry.dicePool.map(Number).filter(side => DICE.includes(side)) : [];
+        if (!dicePool.length) throw new Error(`Level ${index + 1} needs at least one supported die type.`);
+        const size = Number(entry.size);
+        return {
+          roundsAtLevel:Math.max(0, Math.round(roundsAtLevel)),
+          id:String(entry.id || `level-${index + 1}`),
+          name:String(entry.name || `Level ${index + 1}`),
+          advanceToast:String(entry.advanceToast || `Level ${index + 1}`),
+          number:index + 1,
+          tierIndex:Math.max(0, Math.min(5, Number.isFinite(Number(entry.tierIndex)) ? Number(entry.tierIndex) : Number.isFinite(Number(entry.tier)) ? Number(entry.tier) - 1 : Math.floor(index / 5))),
+          pointsMultiplier:Math.max(.1, Number(entry.pointsMultiplier) || 1),
+          roundSeconds:Math.max(5, Number(entry.roundMs) / 1000 || Number(entry.roundSeconds) || 30),
+          boss:Boolean(entry.boss),
+          mistakeLifeCost:Math.max(1, Math.min(3, Number(entry.mistakeLifeCost) || 1)),
+          restoreLifeOnClear:Boolean(entry.restoreLifeOnClear),
+          size:size === 5 ? 5 : 4,
+          dicePool,
+          repeatLimit:Number.isFinite(Number(entry.repeatLimit)) ? Number(entry.repeatLimit) : Infinity,
+          bestRatio:entry.bestRatio && typeof entry.bestRatio === 'object' ? { ...entry.bestRatio } : null,
+          motionRules:rulesFromMotions(Array.isArray(entry.motions) ? entry.motions : [])
+        };
+      });
+    }
+
+    function loadPastedPlan() {
+      const status = document.getElementById('importStatus');
+      status.className = '';
+      try {
+        const raw = document.getElementById('planInput').value.trim();
+        const start = raw.indexOf('[');
+        const end = raw.lastIndexOf(']');
+        if (start < 0 || end <= start) throw new Error('Could not find the LEVEL_PLAN array.');
+        const arraySource = raw.slice(start, end + 1);
+        const entries = Function(`"use strict"; return (${arraySource});`)();
+        configs = normalizeImportedPlan(entries);
+        renderAll();
+        status.textContent = `Loaded ${configs.length} level${configs.length === 1 ? '' : 's'}.`;
+      } catch (error) {
+        status.textContent = error.message || 'Could not load that plan.';
+        status.className = 'error';
+      }
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (_) {
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+      }
+    }
+
+    document.getElementById('copyPlan').addEventListener('click', async () => {
+      await copyText(planText());
+      const status = document.getElementById('copyStatus');
+      status.textContent = 'Copied';
+      setTimeout(() => { status.textContent = ''; }, 1800);
+    });
+    document.getElementById('addLevel').addEventListener('click', addLevel);
+    document.getElementById('loadPlan').addEventListener('click', loadPastedPlan);
+    document.getElementById('resetPlan').addEventListener('click', () => {
+      configs = cloneBaseline();
+      renderAll();
+      document.getElementById('copyStatus').textContent = 'Reset';
+      setTimeout(() => { document.getElementById('copyStatus').textContent = ''; }, 1500);
+    });
+    window.addEventListener('pagehide', () => workshops.forEach(stopMotions));
+
+    renderAll();
+  })();
+  </script>
+</body>
+</html>
