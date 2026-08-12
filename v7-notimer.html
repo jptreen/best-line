@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Likely Lines v7 — thirty-level motion run</title>
+<title>Likely Lines v7 — untimed experiment</title>
 <style>
   :root {
     --cell: 68px;
@@ -598,7 +598,7 @@
         <div class="board tutorial-board" id="tutorialBoard" aria-label="Tutorial dice board"></div>
         <div class="tutorial-copy">
           <p>Click the correct arrow to select the likeliest line.</p>
-          <p>You have 15 seconds per round and 3 lives.</p>
+          <p>Take your time. Each completed round is worth 15 points, and you have 3 lives.</p>
         </div>
         <div class="tutorial-feedback" id="tutorialFeedback" aria-live="polite"></div>
       </div>
@@ -619,7 +619,7 @@
     <div class="hud">
       <div class="tile"><div class="big" id="roundNum">1</div><div class="lab">Round</div></div>
       <div class="tile"><div class="big good" id="pointsNum">0</div><div class="lab">Points</div></div>
-      <div class="tile"><div class="big" id="clock">0:15</div><div class="lab">Time</div></div>
+      <div class="tile"><div class="big" id="roundValue">+15</div><div class="lab">Per clear</div></div>
       <div class="tile"><div class="big hearts" id="lives">♥♥♥</div><div class="lab">Lives</div></div>
     </div>
     <div class="level-strip" id="levelStrip"></div>
@@ -663,18 +663,15 @@
   // -----------------------------------------------------------------------
   // Difficulty data
   // -----------------------------------------------------------------------
-  // Thirty single-round levels in six five-level sets. Each set introduces
-  // one readable change, with motion rules combined only for the final set.
+  // Untimed experiment: retain the thirty-level dice-pool progression while
+  // removing every interval-driven board rule.
   const LEVEL_SETS = [
     { id:'vanilla', name:'Vanilla', dicePool:[8,10], repeatLimit:Infinity, motions:[] },
     { id:'d6-d12', name:'D6 + D12', dicePool:[6,8,10,12], repeatLimit:Infinity, motions:[] },
-    { id:'increment', name:'Increment', dicePool:[6,8,10,12], repeatLimit:Infinity,
-      motions:[{ type:'rotate', count:1, everyMs:1000 }] },
-    { id:'slider', name:'Slider', dicePool:[6,8,10,12], repeatLimit:Infinity,
-      motions:[{ type:'shift', count:1, everyMs:2500, axis:'either' }] },
+    { id:'mixed-one', name:'Mixed Pool I', dicePool:[6,8,10,12], repeatLimit:Infinity, motions:[] },
+    { id:'mixed-two', name:'Mixed Pool II', dicePool:[6,8,10,12], repeatLimit:Infinity, motions:[] },
     { id:'d4-d20', name:'D4 + D20', dicePool:[4,6,8,10,12,20], repeatLimit:Infinity, motions:[] },
-    { id:'all-motion', name:'Slider + Increment + Teleport', dicePool:[4,6,8,10,12,20], repeatLimit:3,
-      motions:[{ type:'shift', count:1, everyMs:2500, axis:'either' }, { type:'rotate', count:1, everyMs:1000 }, { type:'teleport', count:1, everyMs:2500 }] }
+    { id:'full-spectrum', name:'Full Spectrum', dicePool:[4,6,8,10,12,20], repeatLimit:Infinity, motions:[] }
   ];
 
   const LEVEL_START_TOASTS = {
@@ -698,7 +695,7 @@
         startToast: LEVEL_START_TOASTS[number] || '',
         number,
         tier: setIndex + 1,
-        roundMs: 15000,
+        roundMs: null,
         mistakeLifeCost: 1,
         restoreLifeOnClear: false,
         pointsMultiplier: 1,
@@ -711,34 +708,14 @@
     })
   );
 
-  // Development previews can temporarily replace a level's production motion
-  // set for focused debugging. Examples:
-  //   v7.html?level=12
-  //   v7.html?level=20&mode=shift&y=3
-  //   v7.html?mode=rotate&x=3&y=2
-  //   v7.html?mode=teleport&y=3
-  //   v7.html?mode=all
-  const PREVIEW_MOTIONS = {
-    rotate: [{ type: 'rotate', count: 1, everyMs: 1000 }],
-    shift: [{ type: 'shift', count: 1, everyMs: 2500, axis: 'either' }],
-    teleport: [{ type: 'teleport', count: 1, everyMs: 2500 }],
-    all: [
-      { type: 'rotate', count: 1, everyMs: 1000 },
-      { type: 'shift', count: 1, everyMs: 2500, axis:'either' },
-      { type: 'teleport', count: 1, everyMs:2500 }
-    ]
-  };
-
-  const DEFAULT_ROUND_MS = 15000;
   const STARTING_LIVES = 3;
   const MAX_LIVES = 3;
   const LIFE_EVERY_CLEARS = 10;
   const BASE_POINTS = 15;
-  const SHARE_URL = 'https://jptreen.github.io/best-line/v7.html';
-  const HIGH_SCORE_KEY = 'best-line-v7-high-score';
+  const SHARE_URL = 'https://jptreen.github.io/best-line/v7-notimer.html';
+  const HIGH_SCORE_KEY = 'best-line-v7-notimer-high-score';
   const SUCCESS_HOLD_MS = 950;
   const WRONG_SWEEP_MS = 710;
-  const TIMEOUT_HOLD_MS = 900;
   const FINAL_ENTRANCE_MS = 520;
   const BONUS_START_DELAY_MS = 230;
   const BONUS_STEP_MS = 650;
@@ -769,11 +746,7 @@
     points: 0,
     lives: STARTING_LIVES,
     mistakes: 0,
-    timeouts: 0,
     roundMistakes: 0,
-    remainingMs: DEFAULT_ROUND_MS,
-    roundStartedAt: null,
-    tickHandle: null,
     motionHandles: [],
     motionRuntimes: [],
     transitionHandle: null,
@@ -878,30 +851,6 @@
     });
   }
 
-  function previewOverride() {
-    const params = new URLSearchParams(location.search);
-    const mode = params.get('mode');
-    if (!mode || !PREVIEW_MOTIONS[mode]) return null;
-
-    const motions = PREVIEW_MOTIONS[mode].map(m => ({ ...m }));
-    const count = Number.parseInt(params.get('x'), 10);
-    const seconds = Number.parseFloat(params.get('y'));
-    if (Number.isFinite(count)) {
-      // x belongs to the rotating-dice rule. Teleport remains a single-die
-      // swap and a shift remains a single lane unless a future level says
-      // otherwise explicitly in LEVEL_PLAN.
-      motions.forEach(m => {
-        if (m.type === 'rotate') m.count = clamp(count, 1, 8);
-      });
-    }
-    if (Number.isFinite(seconds)) {
-      motions.forEach(m => { m.everyMs = clamp(seconds, .35, 30) * 1000; });
-    }
-    return { mode, motions };
-  }
-
-  const preview = previewOverride();
-
   function debugLevelOverride() {
     const requested = Number.parseInt(new URLSearchParams(location.search).get('level'), 10);
     if (!Number.isFinite(requested)) return null;
@@ -922,16 +871,7 @@
       dicePool: selected.dicePool.slice(),
       motions: selected.motions.map(m => ({ ...m }))
     };
-    if (preview) {
-      copy.id += '-' + preview.mode + '-preview';
-      copy.name += ' · ' + preview.mode[0].toUpperCase() + preview.mode.slice(1) + ' preview';
-      copy.motions = preview.motions.map(m => ({ ...m }));
-    }
     return copy;
-  }
-
-  function roundDurationMs() {
-    return Number.isFinite(state.level?.roundMs) ? state.level.roundMs : DEFAULT_ROUND_MS;
   }
 
   function hasMotion(level) {
@@ -1392,52 +1332,23 @@
     if (runtime.type === 'teleport') tickTeleport(runtime);
   }
 
-  function startMotions(token) {
-    state.motionRuntimes = state.level.motions.map(prepareMotion).filter(Boolean);
-    refreshDieElements();
-    state.motionRuntimes.forEach(runtime => {
-      const handle = setInterval(
-        () => tickMotion(runtime, token),
-        Math.max(250, runtime.everyMs || 3000)
-      );
-      state.motionHandles.push(handle);
-    });
-  }
-
   function stopMotions() {
     state.motionHandles.forEach(clearInterval);
     state.motionHandles = [];
     state.motionRuntimes = [];
   }
 
-  function fmtClock(ms) {
-    const seconds = Math.max(0, Math.ceil(ms / 1000));
-    return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
-  }
-
-  function remainingWholeSeconds() {
-    return Math.max(0, Math.ceil(state.remainingMs / 1000));
-  }
-
-  function syncRemaining() {
-    if (state.roundStartedAt === null || state.paused) return;
-    state.remainingMs = Math.max(0, roundDurationMs() - (performance.now() - state.roundStartedAt));
-  }
-
   function updateHud() {
     document.getElementById('roundNum').textContent = state.currentRound;
     document.getElementById('pointsNum').textContent = state.points.toLocaleString();
 
-    const clock = document.getElementById('clock');
-    clock.textContent = fmtClock(state.remainingMs);
-    clock.classList.toggle('bad', state.remainingMs <= 5000);
-    clock.classList.toggle('warn', state.remainingMs > 5000 && state.remainingMs <= 10000);
+    document.getElementById('roundValue').textContent = '+' + BASE_POINTS;
 
     const hearts = '♥'.repeat(state.lives) + '♡'.repeat(MAX_LIVES - state.lives);
     document.getElementById('lives').textContent = hearts;
     document.getElementById('levelStrip').innerHTML =
       '<b>Level ' + state.level.number + '</b> · ' + state.level.name +
-      ' · points ×' + state.level.pointsMultiplier +
+      ' · +' + BASE_POINTS + ' per clear' +
       (DEBUG_LEVEL ? ' · <span class="debug-tag">DEBUG START</span>' : '');
     document.documentElement.style.setProperty(
       '--bg',
@@ -1449,16 +1360,7 @@
     document.querySelectorAll('#board button.pick').forEach(button => { button.disabled = disabled; });
   }
 
-  function tickClock(token) {
-    if (!state.active || state.paused || state.roundToken !== token) return;
-    syncRemaining();
-    updateHud();
-    if (state.remainingMs <= 0) handleTimeout();
-  }
-
   function stopRoundEngine() {
-    clearInterval(state.tickHandle);
-    state.tickHandle = null;
     stopMotions();
   }
 
@@ -1472,7 +1374,6 @@
 
   function pauseGame() {
     if (!state.active || state.choiceLocked || state.over || state.paused) return;
-    syncRemaining();
     state.paused = true;
     state.pausedAt = performance.now();
     updateHud();
@@ -1484,8 +1385,6 @@
 
   function resumeGame() {
     if (!state.paused) return;
-    const pausedFor = performance.now() - state.pausedAt;
-    if (state.roundStartedAt !== null) state.roundStartedAt += pausedFor;
     clearPauseState();
     updateHud();
     if (state.active && !state.choiceLocked) setPickDisabled(false);
@@ -1599,7 +1498,6 @@
   }
 
   function handleCorrect(key) {
-    syncRemaining();
     state.active = false;
     state.choiceLocked = true;
     stopRoundEngine();
@@ -1610,8 +1508,7 @@
     const selectedPick = board.querySelector('button.pick[data-key="' + key + '"]');
     if (selectedPick) selectedPick.classList.add('answer-pick');
 
-    const secondsLeft = remainingWholeSeconds();
-    const earned = BASE_POINTS + Math.round(secondsLeft * state.level.pointsMultiplier);
+    const earned = BASE_POINTS;
     state.points += earned;
     state.cleared++;
     state.roundsCompleted++;
@@ -1634,9 +1531,6 @@
 
   function choose(key) {
     if (!state.active || state.paused || state.choiceLocked || state.over) return;
-    syncRemaining();
-    if (state.remainingMs <= 0) { handleTimeout(); return; }
-
     const scored = scoreLines();
     const best = Math.max(...scored.map(item => item.p));
     const picked = scored.find(item => item.line.key === key);
@@ -1646,23 +1540,6 @@
     else handleWrong(key);
   }
 
-  function handleTimeout() {
-    if (!state.active || state.paused || state.over) return;
-    state.remainingMs = 0;
-    state.active = false;
-    state.choiceLocked = true;
-    stopRoundEngine();
-    setPickDisabled(true);
-    state.timeouts++;
-    state.roundsCompleted++;
-    state.outcomes.push('🟥');
-    if (loseLife('Time up')) return;
-    const finished = state.roundsCompleted >= FINAL_LEVEL;
-    showStatus(finished ? 'Time up — life lost. Run complete.' : 'Time up — life lost. Loading the next board…', 'wrong');
-    clearTimeout(state.transitionHandle);
-    state.transitionHandle = setTimeout(finished ? endGame : startRound, TIMEOUT_HOLD_MS);
-  }
-
   function startRound() {
     if (state.over || state.lives <= 0) return;
     if (state.roundsCompleted >= FINAL_LEVEL) { endGame(); return; }
@@ -1670,15 +1547,12 @@
     stopRoundEngine();
     clearPauseState();
     state.roundToken++;
-    const token = state.roundToken;
     const previousLevel = state.level;
     const firstRound = !state.hasStartedRound;
     state.currentRound = state.roundsCompleted + 1;
     state.level = levelForRound(state.currentRound);
     const advanced = previousLevel && previousLevel.id !== state.level.id;
     state.roundMistakes = 0;
-    state.remainingMs = roundDurationMs();
-    state.roundStartedAt = null;
     state.choiceLocked = false;
     state.active = false;
 
@@ -1694,11 +1568,8 @@
       toast(state.level.startToast);
     }
 
-    state.roundStartedAt = performance.now();
     state.hasStartedRound = true;
     state.active = true;
-    state.tickHandle = setInterval(() => tickClock(token), 100);
-    startMotions(token);
     setPickDisabled(false);
   }
 
@@ -1902,7 +1773,6 @@
   }
 
   function resetRun() {
-    clearInterval(state.tickHandle);
     stopMotions();
     clearTimeout(state.transitionHandle);
     clearTimeout(toastHandle);
@@ -1915,9 +1785,7 @@
     state.points = 0;
     state.lives = STARTING_LIVES;
     state.mistakes = 0;
-    state.timeouts = 0;
     state.roundMistakes = 0;
-    state.roundStartedAt = null;
     state.active = false;
     state.choiceLocked = false;
     state.paused = false;
@@ -1927,7 +1795,6 @@
     state.bonusHandles = [];
     state.outcomes = [];
     state.level = levelForRound(DEBUG_START_ROUND);
-    state.remainingMs = roundDurationMs();
     document.body.classList.remove('ended');
     document.getElementById('final').hidden = true;
     document.getElementById('game').hidden = true;
@@ -2033,12 +1900,6 @@
     }
   });
 
-  if (preview) {
-    const note = document.getElementById('previewNote');
-    note.hidden = false;
-    note.textContent = 'Engine preview: ' + preview.mode +
-      '. This URL override replaces the selected level’s normal motion set.';
-  }
   hydrateStaticDice();
   drawTutorialBoard();
   resetRun();
