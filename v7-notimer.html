@@ -692,15 +692,18 @@
   // -----------------------------------------------------------------------
   // Difficulty data
   // -----------------------------------------------------------------------
-  // Untimed experiment: retain the thirty-level dice-pool progression while
-  // removing every interval-driven board rule.
+  // Untimed experiment: retain the complete v7 level and motion progression,
+  // while removing the round deadline and time-derived scoring.
   const LEVEL_SETS = [
     { id:'vanilla', name:'Vanilla', dicePool:[8,10], repeatLimit:Infinity, motions:[] },
     { id:'d6-d12', name:'D6 + D12', dicePool:[6,8,10,12], repeatLimit:Infinity, motions:[] },
-    { id:'mixed-one', name:'Mixed Pool I', dicePool:[6,8,10,12], repeatLimit:Infinity, motions:[] },
-    { id:'mixed-two', name:'Mixed Pool II', dicePool:[6,8,10,12], repeatLimit:Infinity, motions:[] },
+    { id:'increment', name:'Increment', dicePool:[6,8,10,12], repeatLimit:Infinity,
+      motions:[{ type:'rotate', count:1, everyMs:1000 }] },
+    { id:'slider', name:'Slider', dicePool:[6,8,10,12], repeatLimit:Infinity,
+      motions:[{ type:'shift', count:1, everyMs:2500, axis:'either' }] },
     { id:'d4-d20', name:'D4 + D20', dicePool:[4,6,8,10,12,20], repeatLimit:Infinity, motions:[] },
-    { id:'full-spectrum', name:'Full Spectrum', dicePool:[4,6,8,10,12,20], repeatLimit:Infinity, motions:[] }
+    { id:'all-motion', name:'Slider + Increment + Teleport', dicePool:[4,6,8,10,12,20], repeatLimit:3,
+      motions:[{ type:'shift', count:1, everyMs:2500, axis:'either' }, { type:'rotate', count:1, everyMs:1000 }, { type:'teleport', count:1, everyMs:2500 }] }
   ];
 
   const LEVEL_START_TOASTS = {
@@ -710,7 +713,10 @@
 
   const RULE_INTRODUCTIONS = {
     6: { title: 'New dice', copy: 'D6 and D12 are on the board.' },
-    21: { title: 'New dice', copy: 'D4 and D20 are on the board.' }
+    11: { title: 'Increment', copy: 'One die changes value every second.' },
+    16: { title: 'Slider', copy: 'One row or column shifts every 2.5 seconds.' },
+    21: { title: 'New dice', copy: 'D4 and D20 are on the board.' },
+    26: { title: 'EVERYTHING', copy: 'Slider, increment and teleport are active.' }
   };
 
   const LEVEL_PLAN = LEVEL_SETS.flatMap((set, setIndex) =>
@@ -1361,6 +1367,18 @@
     if (runtime.type === 'teleport') tickTeleport(runtime);
   }
 
+  function startMotions(token) {
+    state.motionRuntimes = state.level.motions.map(prepareMotion).filter(Boolean);
+    refreshDieElements();
+    state.motionRuntimes.forEach(runtime => {
+      const handle = setInterval(
+        () => tickMotion(runtime, token),
+        Math.max(250, runtime.everyMs || 3000)
+      );
+      state.motionHandles.push(handle);
+    });
+  }
+
   function stopMotions() {
     state.motionHandles.forEach(clearInterval);
     state.motionHandles = [];
@@ -1457,6 +1475,7 @@
     board.classList.add('round-reveal');
     state.hasStartedRound = true;
     state.active = true;
+    startMotions(state.roundToken);
     setPickDisabled(false);
   }
 
