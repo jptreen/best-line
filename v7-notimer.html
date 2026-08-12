@@ -1347,8 +1347,7 @@
     const hearts = '♥'.repeat(state.lives) + '♡'.repeat(MAX_LIVES - state.lives);
     document.getElementById('lives').textContent = hearts;
     document.getElementById('levelStrip').innerHTML =
-      '<b>Level ' + state.level.number + '</b> · ' + state.level.name +
-      ' · +' + BASE_POINTS + ' per clear' +
+      '<b>Level ' + state.level.number + '</b>' +
       (DEBUG_LEVEL ? ' · <span class="debug-tag">DEBUG START</span>' : '');
     document.documentElement.style.setProperty(
       '--bg',

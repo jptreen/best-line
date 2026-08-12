@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Likely Lines — rule introduction playground</title>
+<style>
+  :root {
+    --bg: oklch(17% 0.015 295);
+    --panel: #151a23;
+    --panel-2: #1c222d;
+    --cell: #232a36;
+    --border: #343e4e;
+    --text: #eceef3;
+    --muted: #98a4b7;
+    --green: #59c67f;
+    --amber: #f0a03c;
+    --cyan: #62c5d8;
+    --purple: #bb8cdb;
+    --red: #e8695f;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    min-height: 100vh; margin: 0; padding: 28px;
+    background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  button, select { font: inherit; }
+  button:focus-visible, select:focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+  .shell { width: min(1180px, 100%); margin: 0 auto; }
+  header { margin-bottom: 24px; }
+  h1 { margin: 0 0 6px; font-size: clamp(26px, 4vw, 42px); letter-spacing: -.035em; }
+  header p { margin: 0; color: var(--muted); }
+
+  .workbench {
+    margin: 22px 0 28px; padding: 16px 18px;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--panel);
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .workbench label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+  select {
+    min-width: min(360px, 72vw); padding: 10px 36px 10px 12px;
+    color: var(--text); background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+  }
+  .contract { color: var(--muted); font-size: 13px; text-align: right; }
+  .contract strong { color: var(--green); }
+
+  .options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .option { min-width: 0; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--panel); }
+  .option-head { padding: 15px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .option-title { min-width: 0; }
+  .option-title h2 { margin: 0; font-size: 17px; }
+  .option-title p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+  .preview-button, .ok-button {
+    border: 0; border-radius: 8px; cursor: pointer; font-weight: 800; letter-spacing: .03em;
+  }
+  .preview-button { padding: 9px 13px; color: #07120c; background: var(--green); white-space: nowrap; }
+
+  .game-frame { position: relative; min-height: 420px; padding: 18px; background: #0e1018; overflow: hidden; }
+  .mini-hud { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(330px, 100%); margin: 0 auto 18px; }
+  .hud-tile { padding: 8px 5px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); text-align: center; }
+  .hud-value { display: block; font-size: 22px; font-weight: 800; line-height: 1; }
+  .hud-label { display: block; margin-top: 5px; color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+  .timer-state { color: var(--green); }
+  .timer-state[data-state="paused"] { color: var(--amber); }
+  .timer-state[data-state="done"] { color: var(--red); }
+
+  .board-wrap { display: grid; place-items: center; }
+  .board { display: grid; grid-template-columns: repeat(3, 78px); gap: 7px; }
+  .die {
+    position: relative; display: grid; place-items: center; height: 78px;
+    border: 2px solid #323b49; border-radius: 9px; background: var(--cell);
+  }
+  .shape { position: absolute; width: 62px; height: 62px; opacity: .22; }
+  .shape.d8 { background: #2eb5d0; clip-path: polygon(50% 2%, 98% 50%, 50% 98%, 2% 50%); }
+  .shape.d10 { background: #607be4; clip-path: polygon(50% 2%, 88% 34%, 92% 65%, 50% 98%, 8% 65%, 12% 34%); }
+  .shape.d6 { width: 53px; height: 53px; border-radius: 8px; background: #e7657e; }
+  .shape.d12 { background: #aa70d1; clip-path: polygon(50% 2%,78% 11%,96% 35%,96% 65%,78% 89%,50% 98%,22% 89%,4% 65%,4% 35%,22% 11%); }
+  .shape.d4 { background: #f1a247; clip-path: polygon(50% 5%, 95% 92%, 5% 92%); }
+  .shape.d20 { background: #42bd94; clip-path: polygon(50% 3%,92% 27%,92% 73%,50% 97%,8% 73%,8% 27%); }
+  .roll { position: relative; z-index: 1; font-size: 30px; font-weight: 850; }
+  .die-type { position: absolute; z-index: 1; top: 51px; font-size: 9px; font-weight: 800; letter-spacing: .05em; color: #cbd2dc; }
+  .level-line { margin: 15px 0 0; color: var(--muted); text-align: center; font-size: 13px; }
+
+  .intro {
+    position: absolute; inset: 0; z-index: 4; padding: 24px;
+    display: grid; place-items: center; visibility: hidden; opacity: 0; pointer-events: none;
+    background: #0b0d14;
+  }
+  .intro.is-open { visibility: visible; opacity: 1; pointer-events: auto; }
+  .intro-card { width: min(350px, 100%); text-align: center; }
+  .intro-kicker { color: var(--amber); font-size: 12px; font-weight: 850; letter-spacing: .15em; text-transform: uppercase; }
+  .intro h3 { margin: 11px 0 9px; font-size: clamp(30px, 7vw, 48px); line-height: .95; letter-spacing: -.05em; }
+  .intro-copy { min-height: 44px; margin: 0 auto 18px; color: var(--muted); line-height: 1.4; }
+  .rule-visual { min-height: 70px; margin: 15px auto 20px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .rule-chip { padding: 8px 11px; border: 1px solid currentColor; border-radius: 7px; color: var(--cyan); font-size: 12px; font-weight: 800; }
+  .rule-symbol { color: var(--cyan); font-size: 48px; font-weight: 900; }
+  .ok-button { min-width: 118px; padding: 12px 28px; color: #07120c; background: var(--green); }
+  .timer-lock { margin-top: 14px; color: var(--muted); font-size: 11px; }
+
+  .option-a .intro { transition: opacity .32s ease, visibility 0s linear .32s; }
+  .option-a .intro.is-open { transition-delay: 0s; }
+  .option-a .intro-card { transform: translateY(14px); transition: transform .38s cubic-bezier(.2,.8,.2,1); }
+  .option-a .intro.is-open .intro-card { transform: translateY(0); }
+
+  .option-b .intro { background: linear-gradient(135deg, #10141e 0 50%, #171d28 50%); }
+  .option-b .intro-card { padding: 25px; border-left: 4px solid var(--cyan); text-align: left; }
+  .option-b .intro h3 { font-size: 36px; }
+  .option-b .rule-visual { justify-content: flex-start; }
+  .option-b .ok-button { width: 100%; }
+  .option-b .timer-lock { text-align: center; }
+  .option-b .intro.is-open .intro-card { animation: slide-in .42s cubic-bezier(.2,.8,.2,1) both; }
+
+  .option-c .intro { background: radial-gradient(circle at 50% 48%, #202838 0, #0b0d14 62%); }
+  .option-c .intro-kicker { color: var(--green); }
+  .option-c .rule-symbol { display: grid; place-items: center; width: 76px; height: 76px; border: 2px solid var(--cyan); border-radius: 50%; }
+  .option-c .intro.is-open .rule-symbol { animation: one-pulse .6s ease-out both; }
+
+  .option-d .intro-card { width: min(285px, 100%); }
+  .option-d .intro-kicker, .option-d .intro-copy, .option-d .timer-lock { display: none; }
+  .option-d .intro h3 { margin: 0 0 20px; font-size: 44px; }
+  .option-d .rule-visual { min-height: 50px; margin: 0 0 24px; }
+  .option-d .rule-chip { border: 0; padding: 0; color: var(--muted); }
+  .option-d .intro.is-open .intro-card { animation: arcade-pop .34s cubic-bezier(.15,.8,.3,1.25) both; }
+
+  .intro.is-leaving { animation: intro-out .28s ease both; }
+  @keyframes slide-in { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes one-pulse { 0% { transform: scale(.72); opacity: 0; } 65% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+  @keyframes arcade-pop { from { opacity: 0; transform: scale(.78); } to { opacity: 1; transform: scale(1); } }
+  @keyframes intro-out { to { opacity: 0; transform: translateY(-8px); } }
+
+  @media (max-width: 820px) {
+    body { padding: 18px; }
+    .options { grid-template-columns: 1fr; }
+    .workbench { align-items: stretch; flex-direction: column; }
+    .contract { text-align: left; }
+    select { width: 100%; min-width: 0; }
+  }
+  @media (max-width: 420px) {
+    body { padding: 12px; }
+    .option-head { align-items: flex-start; flex-direction: column; }
+    .preview-button { width: 100%; }
+    .game-frame { min-height: 400px; padding: 14px 10px; }
+    .board { grid-template-columns: repeat(3, 70px); }
+    .die { height: 70px; }
+    .shape { width: 56px; height: 56px; }
+    .die-type { top: 46px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<main class="shell">
+  <header>
+    <h1>Rule introduction workshop</h1>
+    <p>Four treatments for the pause between level sets.</p>
+  </header>
+
+  <section class="workbench" aria-label="Transition controls">
+    <label for="transitionSelect">Rule change
+      <select id="transitionSelect">
+        <option value="6">Level 6 · D6 + D12</option>
+        <option value="11" selected>Level 11 · Increment</option>
+        <option value="16">Level 16 · Slider</option>
+        <option value="21">Level 21 · D4 + D20</option>
+        <option value="26">Level 26 · All motion</option>
+      </select>
+    </label>
+    <div class="contract"><strong>Timer held at 0:15</strong><br>Only the exact “OK” action starts play.</div>
+  </section>
+
+  <section class="options" id="options" aria-label="Introduction screen options"></section>
+</main>
+
+<template id="optionTemplate">
+  <article class="option">
+    <div class="option-head">
+      <div class="option-title"><h2></h2><p></p></div>
+      <button type="button" class="preview-button">Preview intro</button>
+    </div>
+    <div class="game-frame">
+      <div class="mini-hud" aria-label="Example game status">
+        <div class="hud-tile"><span class="hud-value level-value">11</span><span class="hud-label">Level</span></div>
+        <div class="hud-tile"><span class="hud-value timer-value">0:15</span><span class="hud-label">Time</span></div>
+        <div class="hud-tile"><span class="hud-value timer-state" data-state="paused">HELD</span><span class="hud-label">Timer</span></div>
+      </div>
+      <div class="board-wrap">
+        <div class="board" aria-hidden="true"></div>
+        <p class="level-line">Waiting to preview the next rule.</p>
+      </div>
+      <section class="intro" role="dialog" aria-modal="true" aria-label="New rule introduction">
+        <div class="intro-card">
+          <div class="intro-kicker"></div>
+          <h3></h3>
+          <p class="intro-copy"></p>
+          <div class="rule-visual" aria-hidden="true"></div>
+          <button type="button" class="ok-button">OK</button>
+          <div class="timer-lock">Timer is paused until OK</div>
+        </div>
+      </section>
+    </div>
+  </article>
+</template>
+
+<script>
+(() => {
+  'use strict';
+
+  const TRANSITIONS = {
+    6: {
+      level: 6,
+      title: 'New dice',
+      copy: 'D6 and D12 join the board.',
+      symbol: 'D6 · D12',
+      compact: 'D6 + D12'
+    },
+    11: {
+      level: 11,
+      title: 'Increment',
+      copy: 'One die changes value every second.',
+      symbol: '1 → 2 → 3',
+      compact: 'ONE DIE · EVERY 1s'
+    },
+    16: {
+      level: 16,
+      title: 'Slider',
+      copy: 'Increment stops. One row or column now shifts.',
+      symbol: '←  ROW  →',
+      compact: 'ONE LANE · EVERY 2.5s'
+    },
+    21: {
+      level: 21,
+      title: 'New dice',
+      copy: 'The board settles. D4 and D20 join the mix.',
+      symbol: 'D4 · D20',
+      compact: 'D4 + D20'
+    },
+    26: {
+      level: 26,
+      title: 'All motion',
+      copy: 'Slider, increment and teleport are now active.',
+      symbol: '↔  +1  ⇄',
+      compact: 'SLIDE · TICK · TELEPORT'
+    }
+  };
+
+  const OPTIONS = [
+    { id:'a', name:'A · Clear briefing', note:'Calm, explicit, familiar' },
+    { id:'b', name:'B · Side card', note:'Directional, quick to scan' },
+    { id:'c', name:'C · Signal pulse', note:'Celebratory rule reveal' },
+    { id:'d', name:'D · Minimal arcade', note:'The fewest possible words' }
+  ];
+
+  const DICE = [
+    [8, 4], [10, 7], [8, 2],
+    [10, 5], [8, 1], [10, 8],
+    [8, 6], [10, 3], [8, 7]
+  ];
+  const runtimes = new Map();
+  const optionsRoot = document.getElementById('options');
+  const template = document.getElementById('optionTemplate');
+  const transitionSelect = document.getElementById('transitionSelect');
+
+  function formatTime(seconds) {
+    return '0:' + String(Math.max(0, seconds)).padStart(2, '0');
+  }
+
+  function drawBoard(board) {
+    board.innerHTML = DICE.map(([sides, value]) =>
+      `<div class="die"><div class="shape d${sides}"></div><span class="roll">${value}</span><span class="die-type">d${sides}</span></div>`
+    ).join('');
+  }
+
+  function renderIntro(article) {
+    const data = TRANSITIONS[transitionSelect.value];
+    article.querySelector('.level-value').textContent = data.level;
+    article.querySelector('.intro-kicker').textContent = 'Level ' + data.level + ' · New rule';
+    article.querySelector('.intro h3').textContent = data.title;
+    article.querySelector('.intro-copy').textContent = data.copy;
+    const visual = article.querySelector('.rule-visual');
+    visual.innerHTML = article.dataset.option === 'c'
+      ? `<div class="rule-symbol">${data.title === 'Increment' ? '+1' : '!'}</div>`
+      : `<div class="rule-chip">${article.dataset.option === 'd' ? data.compact : data.symbol}</div>`;
+  }
+
+  function stopTimer(article) {
+    const runtime = runtimes.get(article);
+    if (runtime) clearInterval(runtime.interval);
+    runtimes.delete(article);
+  }
+
+  function setTimerState(article, seconds, state) {
+    article.querySelector('.timer-value').textContent = formatTime(seconds);
+    const stateEl = article.querySelector('.timer-state');
+    stateEl.dataset.state = state;
+    stateEl.textContent = state === 'paused' ? 'HELD' : state === 'done' ? 'DONE' : 'LIVE';
+  }
+
+  function preview(article) {
+    stopTimer(article);
+    renderIntro(article);
+    setTimerState(article, 15, 'paused');
+    article.querySelector('.level-line').textContent = 'The next board is waiting.';
+    const intro = article.querySelector('.intro');
+    intro.classList.remove('is-leaving');
+    intro.classList.add('is-open');
+    article.querySelector('.ok-button').focus();
+  }
+
+  function beginLevel(article) {
+    const intro = article.querySelector('.intro');
+    intro.classList.add('is-leaving');
+    setTimeout(() => {
+      intro.classList.remove('is-open', 'is-leaving');
+      article.querySelector('.level-line').textContent = 'Level started only after OK.';
+      article.querySelector('.preview-button').focus();
+    }, 280);
+
+    const startedAt = performance.now();
+    setTimerState(article, 15, 'running');
+    const interval = setInterval(() => {
+      const seconds = Math.max(0, 15 - Math.floor((performance.now() - startedAt) / 1000));
+      setTimerState(article, seconds, seconds ? 'running' : 'done');
+      if (!seconds) {
+        stopTimer(article);
+        article.querySelector('.level-line').textContent = 'Preview complete. Replay when ready.';
+      }
+    }, 200);
+    runtimes.set(article, { interval });
+  }
+
+  OPTIONS.forEach(option => {
+    const article = template.content.firstElementChild.cloneNode(true);
+    article.classList.add('option-' + option.id);
+    article.dataset.option = option.id;
+    article.querySelector('h2').textContent = option.name;
+    article.querySelector('.option-title p').textContent = option.note;
+    drawBoard(article.querySelector('.board'));
+    renderIntro(article);
+    article.querySelector('.preview-button').addEventListener('click', () => preview(article));
+    article.querySelector('.ok-button').addEventListener('click', () => beginLevel(article));
+    optionsRoot.appendChild(article);
+  });
+
+  transitionSelect.addEventListener('change', () => {
+    document.querySelectorAll('.option').forEach(article => {
+      stopTimer(article);
+      renderIntro(article);
+      setTimerState(article, 15, 'paused');
+      article.querySelector('.intro').classList.remove('is-open', 'is-leaving');
+      article.querySelector('.level-line').textContent = 'Waiting to preview the next rule.';
+    });
+  });
+})();
+</script>
+</body>
+</html>
